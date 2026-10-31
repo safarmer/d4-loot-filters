@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { decode, encode } from "../src/codec.ts";
-import { checkLimits, compileModel, defaultModel, MAX_RULES, MAX_UNIQUES, validAffixes, validCharmAffixes } from "../src/compiler.ts";
+import { checkLimits, classUniqueCharms, compileModel, defaultModel, MAX_RULES, MAX_UNIQUES, validAffixes, validCharmAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
 import { mapping, STAT_GROUPS } from "../src/mapping.ts";
 import { loadMapping } from "../tools/node_mapping.ts";
@@ -154,7 +154,7 @@ test("charms: set+stats before set, own colours; gear shares one colour", () => 
   Object.assign(m.charms, { enabled: true, tier: 0, sets: [2340371], desired: [2545972, 2545970], n: 1 });
   Object.assign(m.slots.helm, { enabled: true, uniques: [2647147] });
   Object.assign(m.slots.boots, { enabled: true, legendaries: true });
-  m.colors = { gear: "0xFF112233", charm_set: "0xFF445566", charm_stats: "0xFF778899" };
+  m.colors = { ...m.colors, gear: "0xFF112233", charm_set: "0xFF445566", charm_stats: "0xFF778899" };
   const f = compileModel(m, "starter");
   assert.deepEqual(f.rules.slice(0, 3).map((r) => [r.name, r.color]),
     [["Charm Set+Stats", "0xFF778899"], ["Charm Set", "0xFF445566"], ["Charms/Seals for Mats", "0xFFFF0000"]]);
@@ -212,6 +212,24 @@ test("limits: more than 25 rules or 10 uniques in a rule are reported", () => {
   for (const name of ["strict_warlock_bs", "roa_very_strict_rogue"])
     for (const p of ["starter", "endgame"] as const)
       assert.ok(compileModel(roundtrip(load(name)).model, p).rules.length <= MAX_RULES, `${name} ${p}`);
+});
+
+test("unique charms: picked list, then all others, before set charms and materials", () => {
+  const m = defaultModel("warlock", "W");
+  const ids = classUniqueCharms("warlock").slice(0, 3);
+  Object.assign(m.unique_charms, { enabled: true, uniques: ids, any: true });
+  Object.assign(m.charms, { enabled: true, sets: [2340371] });
+  const f = compileModel(m);
+  assert.deepEqual(f.rules.slice(0, 4).map((r) => [r.name, r.color]), [
+    ["Unique Charms", "0xFF4E8A20"], ["All Unique Charms", "0xFFE8229F"], ["Charm Set", "0xFFE89922"], ["Charms/Seals for Mats", "0xFFFF0000"]]);
+  assert.deepEqual(f.rules[0].conditions.find((c) => c.type === 8)!.ids, ids);
+  encode(f);
+  // a compiled filter imports back into the same unique charm settings
+  const back = roundtrip(f).model.unique_charms;
+  assert.deepEqual([back.uniques, back.any], [ids, true]);
+  // the Warlock filter's rules (a gear amulet in the list; property 5) stay kept as-is
+  const { model } = roundtrip(load("strict_warlock_bs"));
+  assert.ok(!model.unique_charms.enabled && !model.unique_charms.any);
 });
 
 test("unverified class id refuses to compile", () => {

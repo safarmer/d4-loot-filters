@@ -1,17 +1,38 @@
 import type { Model } from "../compiler.ts";
 import { mapping } from "../mapping.ts";
 import { css } from "./colors.ts";
-import { CHARMS } from "./Doll.tsx";
+import { CHARMS, UNIQUE_CHARMS } from "./Doll.tsx";
 
 const plural = (n: number, w: string) => `${n} ${w}${n > 1 ? "s" : ""}`;
 
 /** What the selected section's rules do, in words. */
 export function Summary({ model, sel }: { model: Model; sel: string }) {
+  if (sel === UNIQUE_CHARMS) {
+    const u = model.unique_charms;
+    return (
+      <>
+        <h2>Unique charms <small>(both filters)</small></h2>
+        <table className="profiles">
+          <thead><tr><th>Recolours</th><th>Colour</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>{u.enabled && u.uniques.length ? `${u.uniques.length} picked unique charm${u.uniques.length > 1 ? "s" : ""}` : "no picked unique charms"}</td>
+              <td><span className="sw" style={{ background: css(model.colors.unique_charm) }} /></td>
+            </tr>
+            <tr>
+              <td>{u.any ? "every other unique charm" : "other unique charms: no"}</td>
+              <td><span className="sw" style={{ background: css(model.colors.any_unique_charm) }} /></td>
+            </tr>
+          </tbody>
+        </table>
+      </>
+    );
+  }
   if (sel === CHARMS) {
     const c = model.charms;
     return (
       <>
-        <h2>Charms <small>(both filters)</small></h2>
+        <h2>Set charms <small>(both filters)</small></h2>
         <table className="profiles">
           <thead><tr><th>Recolours</th><th>Colour</th></tr></thead>
           <tbody>

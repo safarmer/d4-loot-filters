@@ -7,7 +7,7 @@
 // (as imported), so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, MATS_MASK, MYTHIC_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, MATS_MASK, MAX_UNIQUES, MYTHIC_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
@@ -50,6 +50,20 @@ function isMatsRule(rule: Rule, m: Mapping): boolean {
   const by = byType(rule.conditions);
   return !!rule.enabled && rule.vis === 0 && rule.conditions.length === 2 && by.get(1)?.value === MATS_MASK
     && deepEqual([...(by.get(5)?.ids ?? [])].sort(), [m.charm_type, m.seal_type].sort());
+}
+
+/** "picked": charm item type + only charm uniques (at most MAX_UNIQUES); "all": unique rarity + charm type only. */
+function classifyUniqueCharm(rule: Rule, m: Mapping): "picked" | "all" | null {
+  if (!rule.enabled || rule.vis !== 2) return null;
+  const by = byType(rule.conditions);
+  const types = [...(by.get(5)?.ids ?? [])].sort();
+  const charmTypes = types.length && types.every((t) => t === m.charm_type || t === m.seal_type) && types.includes(m.charm_type);
+  if (rule.conditions.length === 2 && charmTypes && by.has(8)) {
+    const ids = by.get(8)!.ids ?? [];
+    if (ids.length <= MAX_UNIQUES && ids.every((i) => m.uniques[String(i)]?.slot === "charm")) return "picked";
+  }
+  if (rule.conditions.length === 2 && by.get(1)?.value === UNIQUE_MASK && deepEqual(types, [m.charm_type])) return "all";
+  return null;
 }
 
 /** Set-charm recolour rule: "set" (sets only) or "stats" (sets + an affix condition), else null. */
@@ -118,6 +132,24 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     // a plain "show mythics" rule: the compiler always adds one (last, before No Ma'am)
     if (rule.vis === 0 && rule.conditions.length === 1 && rule.conditions[0].type === 1
       && rule.conditions[0].value === MYTHIC_MASK) return;
+
+    // unique charm rules: picked list (charm uniques with the charm item type) or "all unique charms"
+    const uc = classifyUniqueCharm(rule, m);
+    if (uc) {
+      const u = model.unique_charms, by = byType(rule.conditions);
+      if (model.charms.mats) return keepRaw("unique charm rule after the materials rule");
+      if (uc === "picked") {
+        if (u.enabled) return keepRaw("unique charms already picked by another rule");
+        Object.assign(u, { enabled: true, uniques: [...(by.get(8)!.ids ?? [])] });
+        model.colors.unique_charm = rule.color;
+      } else {
+        if (u.any) return keepRaw("all unique charms already modelled");
+        u.any = true;
+        model.colors.any_unique_charm = rule.color;
+      }
+      modelled = true;
+      return;
+    }
 
     if (isMatsRule(rule, m)) {
       if (model.charms.mats) return keepRaw("materials rule already modelled");

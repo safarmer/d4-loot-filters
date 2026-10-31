@@ -2,7 +2,12 @@
 //
 // Model:
 //   {name, class, slot_idx, raw: [{place, rule}],
-//    colors: {gear, charm_set, charm_stats}, charms: CharmConfig, slots: {slot_key: SlotConfig}}
+//    colors: {gear, charm_set, charm_stats, unique_charm, any_unique_charm}, charms: CharmConfig,
+//    unique_charms: UniqueCharmConfig, slots: {slot_key: SlotConfig}}
+// UniqueCharmConfig: enabled, uniques [charm unique ids, at most MAX_UNIQUES], any
+//   "Unique Charms" recolours the picked unique charms (unique_charm colour); with any, "All Unique
+//   Charms" then recolours every other unique charm (any_unique_charm colour). Both come before the
+//   set-charm rules and the materials rule, which also match unique charms.
 // CharmConfig: enabled, sets [talisman set ids], desired [charm stat ids], n, mats
 //   Charm rules (same in both filters): "Charm Set+Stats" (set charm of a wanted set with n desired
 //   stats, charm_stats colour) before "Charm Set" (any set charm of a wanted set, charm_set colour).
@@ -45,11 +50,20 @@ export const PROFILES: ProfileName[] = ["starter", "endgame"];
 /** Show rules carry this suffix; recolour rules use the plain slot label. */
 export const SHOW_SUFFIX = " OK";
 
-export interface Colors { gear: string; charm_set: string; charm_stats: string }
-/** Owner's colours: lemon yellow gear, orange set charms, yellow-green set charms with stats. */
-export const DEFAULT_COLORS: Colors = { gear: "0xFFFFE000", charm_set: "0xFFE89922", charm_stats: "0xFFD3E822" };
+export interface Colors { gear: string; charm_set: string; charm_stats: string; unique_charm: string; any_unique_charm: string }
+/** Owner's colours: lemon yellow gear, orange set charms, yellow-green set charms with stats,
+ *  green picked unique charms, pink other unique charms. */
+export const DEFAULT_COLORS: Colors = {
+  gear: "0xFFFFE000", charm_set: "0xFFE89922", charm_stats: "0xFFD3E822", unique_charm: "0xFF4E8A20", any_unique_charm: "0xFFE8229F",
+};
+
+export interface UniqueCharmConfig { enabled: boolean; uniques: number[]; any: boolean }
 
 /** Where a kept-as-is rule goes: before or after the modelled rules (as it was imported). */
+/** Owner's limits: rules per filter, uniques per uniques condition (stats: no known limit). */
+export const MAX_RULES = 25;
+export const MAX_UNIQUES = 10;
+
 export type Place = "first" | "last";
 
 export interface CharmConfig { enabled: boolean; sets: number[]; desired: number[]; n: number; mats: boolean }
@@ -67,6 +81,7 @@ export interface Model {
   raw: { place: Place; rule: Rule }[];
   colors: Colors;
   charms: CharmConfig;
+  unique_charms: UniqueCharmConfig;
   slots: Record<string, SlotConfig>;
 }
 
@@ -82,7 +97,8 @@ export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   for (const k of Object.keys(mapping().slots)) slots[k] = defaultSlot();
   return {
     name, class: cls, slot_idx: 1, raw: [],
-    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, sets: [], desired: [], n: 1, mats: true }, slots,
+    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, sets: [], desired: [], n: 1, mats: true },
+    unique_charms: { enabled: false, uniques: [], any: false }, slots,
   };
 }
 
@@ -116,6 +132,28 @@ export function classSets(cls: string): number[] {
   return Object.entries(mapping().talisman_sets).filter(([, t]) => t.classes.includes(cls)).map(([i]) => Number(i));
 }
 
+/** Unique charms this class can use (charm versions of uniques), current season only. */
+export function classUniqueCharms(cls: string): number[] {
+  return Object.entries(mapping().uniques)
+    .filter(([, u]) => u.slot === "charm" && u.classes.includes(cls) && !u.hidden).map(([i]) => Number(i));
+}
+
+/** Unique charm rules: picked ones (chunks of MAX_UNIQUES), then optionally all others. */
+export function uniqueCharmRules(c: UniqueCharmConfig, colors: Colors): Rule[] {
+  const m = mapping();
+  const out: Rule[] = [];
+  if (c.enabled)
+    for (let i = 0; i < c.uniques.length; i += MAX_UNIQUES)
+      out.push({ name: `Unique Charms${c.uniques.length > MAX_UNIQUES ? ` ${i / MAX_UNIQUES + 1}` : ""}`, vis: 2,
+        color: colors.unique_charm, enabled: 1, conditions: [
+          { type: 5, kind: "item_types", ids: [m.charm_type, m.seal_type] },
+          { type: 8, kind: "uniques", ids: c.uniques.slice(i, i + MAX_UNIQUES) }] });
+  if (c.any)
+    out.push({ name: "All Unique Charms", vis: 2, color: colors.any_unique_charm, enabled: 1, conditions: [
+      { type: 1, kind: "rarity", value: UNIQUE_MASK }, { type: 5, kind: "item_types", ids: [m.charm_type] }] });
+  return out;
+}
+
 /** Charm rules, strongest first: Set+Stats (strong recolour), Set (recolour), materials (show). */
 export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
   const m = mapping();
@@ -135,9 +173,6 @@ export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
   return [...out, ...mats];
 }
 
-/** Owner's limits: rules per filter, uniques per uniques condition (stats: no known limit). */
-export const MAX_RULES = 25;
-export const MAX_UNIQUES = 10;
 
 const ANCESTRAL: Condition = { type: 2, kind: "property", value: 4 };
 const gaCondition = (ga: number): Condition => ({ type: 4, kind: "greater_affixes", value: ga, flag: 1 });
@@ -256,7 +291,8 @@ export function orderedRules(model: Model, profile: ProfileName = "endgame"): { 
   const out: { section: string; rule: Rule }[] = [];
   const add = (section: string, rules: Rule[]) => rules.forEach((rule) => out.push({ section, rule }));
   add("kept as-is", model.raw.filter((r) => r.place === "first").map((r) => r.rule));
-  add("Charms", charmRules(model.charms, model.colors));
+  add("Unique charms", uniqueCharmRules(model.unique_charms, model.colors));
+  add("Set charms", charmRules(model.charms, model.colors));
   out.push(...gearRules(model, profile));
   add("kept as-is", model.raw.filter((r) => r.place === "last").map((r) => r.rule));
   // for toggling in game: starter shows every ancestral; end-game has a 2-GA version, off

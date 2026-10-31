@@ -8,9 +8,11 @@ const COLOR_LABEL: [keyof Colors, string][] = [
   ["gear", "Gear (armour, jewellery, weapons)"],
   ["charm_set", "Charm of a wanted set"],
   ["charm_stats", "Charm of a wanted set + desired stats"],
+  ["unique_charm", "Picked unique charm"],
+  ["any_unique_charm", "Any other unique charm"],
 ];
 
-export function Side({ model, sel, notes, update }: { model: Model; sel: string; notes: string[]; update: Update }) {
+export function Side({ model, sel, update }: { model: Model; sel: string; update: Update }) {
   // rule counts per filter, against the limit (No Ma'am included)
   const counts: { label: string; n: number }[] = [];
   for (const [p, label] of [["starter", "Starter"], ["endgame", "End-game"]] as const) {
@@ -47,16 +49,6 @@ export function Side({ model, sel, notes, update }: { model: Model; sel: string;
         <li>No Ma'am (hides the rest; can be switched off in game)</li>
       </ol>
       <Summary model={model} sel={sel} />
-      <h2>Kept as-is <small>(rules the slot model cannot express)</small></h2>
-      <ul>
-        {model.raw.map((r, i) => (
-          <li key={i}>{r.rule.name}{" "}
-            <button onClick={() => update((d) => { d.raw.splice(i, 1); })}>remove</button>
-          </li>
-        ))}
-      </ul>
-      <h2>Import notes</h2>
-      <ul>{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
     </aside>
   );
 }

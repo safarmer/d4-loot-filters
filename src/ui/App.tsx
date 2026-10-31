@@ -6,8 +6,10 @@ import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
 import { SlotPanel } from "./SlotPanel.tsx";
 import { CharmPanel } from "./CharmPanel.tsx";
-import { CHARMS, Doll } from "./Doll.tsx";
+import { CHARMS, Doll, UNIQUE_CHARMS } from "./Doll.tsx";
+import { UniqueCharmPanel } from "./UniqueCharmPanel.tsx";
 import { Side } from "./Side.tsx";
+import { Notes } from "./Notes.tsx";
 
 // The owner's filters next to editor/, bundled as raw text at build time.
 const BUNDLED = import.meta.glob<string>("../../../Loot Filters/*.txt", { query: "?raw", import: "default" });
@@ -99,10 +101,13 @@ export function App() {
       )}
       <main>
         <Doll model={model} sel={sel} onSelect={setSel} />
-        {sel === CHARMS
-          ? <CharmPanel key={`${model.class}/charms`} model={model} update={update} />
-          : <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />}
-        <Side model={model} sel={sel} notes={notes} update={update} />
+        <div className="center">
+          {sel === CHARMS ? <CharmPanel key={`${model.class}/charms`} model={model} update={update} />
+            : sel === UNIQUE_CHARMS ? <UniqueCharmPanel key={`${model.class}/ucharms`} model={model} update={update} />
+            : <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />}
+          <Notes model={model} notes={notes} update={update} />
+        </div>
+        <Side model={model} sel={sel} update={update} />
       </main>
     </>
   );

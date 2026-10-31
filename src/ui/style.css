@@ -11,10 +11,14 @@ main{display:grid;grid-template-columns:minmax(260px,320px) minmax(340px,1fr) mi
 .slot{background:var(--panel);border:2px solid var(--line);border-radius:6px;padding:8px;min-height:64px;cursor:pointer;text-align:left}
 .slot.on{border-color:var(--c,var(--acc))}.slot.sel{outline:2px solid var(--acc)}.slot.off{opacity:.55}
 .slot b{display:block}.slot small{color:var(--mut)}
-#doll{grid-template-areas:". helm amulet" "gloves chest ring" "weapon pants offhand" ". boots ." "rule rule rule" ". charms ."}
+#doll{grid-template-areas:". helm amulet" "gloves chest ring" "weapon pants offhand" ". boots ." "rule rule rule" "ucharms . charms"}
 .doll-rule{grid-area:rule;border:none;border-top:1px solid var(--line);margin:4px 0;width:100%}
 #panel{container-type:inline-size}
-#panel,#side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}
+#notes h2:first-child{margin-top:0}
+/* notes scroll inside their own box, so they never lengthen the page */
+#notes{max-height:30vh;overflow:auto}
+.center{display:flex;flex-direction:column;gap:16px;min-width:0}
+#panel,#side,#notes{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}
 fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:8px}legend{color:var(--mut);padding:0 4px}
 .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:4px 0}
 .list{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;margin-top:6px}

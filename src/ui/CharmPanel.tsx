@@ -26,7 +26,7 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
 
   return (
     <section id="panel">
-      <h2>Charms</h2>
+      <h2>Set charms</h2>
       <fieldset>
         <legend>Set charms</legend>
         <div className="row">
