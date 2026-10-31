@@ -69,6 +69,25 @@ test("stat lists hold only rollable affixes, including every affix the working f
   assert.ok(!names.some((n) => /^(UNIQUE|TEST|Runeword|RuneWord|X2_Transfiguration)/i.test(n)), "junk affix in list");
 });
 
+test("unique pickers hold only current items, including every unique the working filters use", () => {
+  const m = mapping();
+  for (const f of FILTERS)
+    for (const r of load(f).rules)
+      for (const c of r.conditions)
+        if (c.type === 8) for (const i of c.ids ?? []) assert.equal(m.uniques[i].hidden, undefined, `${f}: ${m.uniques[i].name}`);
+  const shown = Object.values(m.uniques).filter((u) => !u.hidden && u.slot !== "charm");
+  const names = new Set<string>();
+  for (const u of shown) {
+    const key = `${u.slot}|${u.display}`;
+    assert.ok(!names.has(key), `duplicate shown: ${key}`);
+    names.add(key);
+    assert.ok(!/^S(10|12|14)_/.test(u.name) && !u.display?.startsWith("["), u.name);
+  }
+  assert.ok(m.uniques[2647147].hidden === undefined); // Leoric's Crown
+  assert.equal(m.uniques[2646291].hidden, "Season 14 copy"); // S14 Harlequin Crest
+  assert.ok(m.uniques[609820].mythic); // Harlequin Crest
+});
+
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
 });

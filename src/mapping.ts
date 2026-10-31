@@ -9,6 +9,8 @@ export interface ItemTypeDef { name: string; slot: string | null; classes: strin
 export interface UniqueDef {
   name: string; display: string | null; slot: string; item_type: number;
   classes: string[]; season_item: boolean; mythic: boolean;
+  /** Why pickers hide this item (placeholder, past-season copy). Absent = shown. */
+  hidden?: string;
 }
 export interface AffixDef {
   name: string; label: string; labels: number[]; classes: string[];

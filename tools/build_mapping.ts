@@ -50,6 +50,21 @@ function rollable(name: string, d: any): boolean {
     && !d.bIsTemperedAffix && !NOT_REAL.test(name);
 }
 
+// Unique item fields, inferred from data:
+//   eMagicType 4 = mythic.
+//   eForcedItemQualityModifier 3 = Season 10 chaos copy (412 items, e.g. S10_Ring_Unique_Generic_100_Helm);
+//   5 = S14_ copy of a mythic.
+const MYTHIC = 4, CHAOS_COPY = 3, MYTHIC_COPY = 5;
+// Season the game is in. Update each season, then rebuild.
+const CURRENT_SEASON = 15;
+
+/** Reason to hide a unique from pickers, or undefined to show it. */
+function hiddenReason(name: string, display: string | null, d: any): string | undefined {
+  if (!display || display.startsWith("[") || /NoPowers|Boost/.test(name)) return "placeholder or test item";
+  if (d.eForcedItemQualityModifier === CHAOS_COPY) return "Season 10 chaos copy";
+  return undefined;
+}
+
 const load = (p: string): any => JSON.parse(readFileSync(p, "utf8"));
 const classes = (flags: number[]) => CLASSES.filter((_, i) => flags[i]);
 
@@ -128,11 +143,31 @@ for (const [name, p] of files(join(meta, "Item"), ".itm.json", "_Unique_")) {
   const tid: number = t.__raw__;
   const slot = typeSlot.get(tid);
   if (!slot && tid !== CHARM_TYPE) continue;
+  const shown = display(strings, "Item", name);
+  const hidden = hiddenReason(name, shown, d);
   uniques[d.__snoID__] = {
-    name, display: display(strings, "Item", name), slot: slot ?? "charm", item_type: tid,
+    name, display: shown, slot: slot ?? "charm", item_type: tid,
     classes: classes(d.fUsableByClass), season_item: Boolean(d.bSeasonItem),
-    mythic: d.eMagicType === 5 || name.includes("Mythic"),
+    mythic: d.eMagicType === MYTHIC || d.eForcedItemQualityModifier === MYTHIC_COPY,
+    ...(hidden ? { hidden } : {}),
   };
+}
+
+// Past-season copies: "S<n>_..." with n < CURRENT_SEASON, when an item with the same display name
+// (ignoring a suffix such as " (Crucible)") and slot exists that is not a copy itself. Examples:
+// S14_Helm_Unique_Generic_002 (Harlequin Crest), S12_1HSword_Unique_Generic_001 (Doombringer (Crucible)).
+// Season items with no other copy (e.g. S05_BSK_Helm_Unique_Generic_001, Crown of Lucion) stay shown.
+const seasonOf = (name: string) => Number(/^S(\d+)_/.exec(name)?.[1] ?? NaN);
+const nameKey = (u: UniqueDef) => `${u.slot}|${(u.display ?? "").replace(/ \([^)]*\)$/, "")}`;
+const isCopy = (u: UniqueDef) => seasonOf(u.name) < CURRENT_SEASON;
+const firstSeen = new Map<string, number>(); // name key -> lowest season number (base items count as 0)
+for (const u of Object.values(uniques)) {
+  if (u.hidden) continue;
+  const s = Number.isNaN(seasonOf(u.name)) ? 0 : seasonOf(u.name);
+  firstSeen.set(nameKey(u), Math.min(firstSeen.get(nameKey(u)) ?? Infinity, s));
+}
+for (const u of Object.values(uniques)) {
+  if (!u.hidden && isCopy(u) && firstSeen.get(nameKey(u))! < seasonOf(u.name)) u.hidden = `Season ${seasonOf(u.name)} copy`;
 }
 
 const affixes: Record<string, AffixDef> = {};

@@ -32,9 +32,18 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
   const edit = (fn: (s: SlotConfig) => void) => update((d) => fn(d.slots[slotKey]));
 
   const uniques = useMemo(() => {
-    const list = Object.entries(m.uniques)
-      .filter(([id, u]) => u.slot === slotKey && (u.classes.includes(cls) || s.uniques.includes(+id)))
-      .map(([id, u]) => ({ id: +id, name: u.display || u.name }));
+    // hidden items (placeholders, past-season copies) show only when the filter already uses them
+    const picked = Object.entries(m.uniques).filter(([id, u]) => u.slot === slotKey
+      && ((u.classes.includes(cls) && !u.hidden) || s.uniques.includes(+id)));
+    // same display name twice (e.g. a mythic and its S14_ copy): show the internal name too
+    const count = new Map<string, number>();
+    for (const [, u] of picked) count.set(u.display ?? u.name, (count.get(u.display ?? u.name) ?? 0) + 1);
+    const list = picked.map(([id, u]) => {
+      const base = u.display ?? u.name;
+      const name = base + (count.get(base)! > 1 ? ` (${u.name})` : "") + (u.mythic ? " · mythic" : "")
+        + (u.hidden ? ` · ${u.hidden}` : "");
+      return { id: +id, name };
+    });
     for (const id of s.uniques)
       if (!list.some((u) => u.id === id)) list.push({ id, name: `unverified ${id}` });
     return list.sort((a, b) => a.name.localeCompare(b.name));

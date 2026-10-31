@@ -75,6 +75,21 @@ keeps all 29 affix IDs the two working filters use and cuts 2,618 affixes to 362
 
 Unverified: whether seasonal stats such as `S12_KillStreak_*` still roll in the current season.
 
+## Unique lists
+Unique pickers show only items in the current season (`CURRENT_SEASON` in `tools/build_mapping.ts`,
+now 15; update it each season and rebuild). Hidden items keep their entry, with a `hidden` reason,
+so IDs in imported filters still resolve, and a hidden item a filter already uses still shows.
+
+| Hidden | Rule | Count |
+|---|---|---|
+| placeholder or test item | no display name, `[PH]`, or `Boost`/`NoPowers` in the name | 67 |
+| Season 10 chaos copy | `eForcedItemQualityModifier` 3 (e.g. `S10_Ring_Unique_Generic_100_Helm`) | 412 |
+| Season n copy | `S<n>_` name with n < 15, when an older item has the same display name (ignoring a suffix such as ` (Crucible)`) and slot | 34 (S12, S14) |
+
+Season items with no older copy stay shown, e.g. `S05_BSK_` items (Crown of Lucion) and `S15_` items.
+`mythic` is `eMagicType` 4 (or `eForcedItemQualityModifier` 5 on a copy). Field meanings are inferred
+from the data; drop tables did not help (d4data's reference index links no gear to treasure classes).
+
 ## Unverified
 - Filter `class_id` is known only for warlock (6) and rogue (7). Other classes cannot compile.
 - More than one affix (type 6) condition per rule (used for "required") is not in any real filter yet. Test in game.
