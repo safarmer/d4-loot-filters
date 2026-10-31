@@ -17,10 +17,10 @@ Rule order is fixed, not chosen. A rule sits above another only where that chang
 (first match wins): inside a section, strong recolour before recolour before show, since those rules
 cover the same items. Sections cover different items (charms, each gear slot; uniques vs legendaries
 by rarity), so they keep a natural order: kept-as-is rules imported before any modelled rule,
-charms, gear slots, kept-as-is rules imported after, Mythics, `No Ma'am`. Mythics (a Settings
-option, on by default: show rarity 32) comes last so the unique recolour rules, whose rarity 48
-includes mythic, match mythics first. A plain show-mythics rule in an imported filter becomes this
-setting. The Order list in the right column
+charms, gear slots, kept-as-is rules imported after, Mythics, `No Ma'am`. Mythics (show rarity
+32, always added; switch it off in game if wanted) comes last so the unique recolour rules, whose
+rarity 48 includes mythic, match mythics first. A plain show-mythics rule in an imported filter is
+replaced by it. The Order list in the right column
 shows the end-game output.
 
 A slot turns on when its first item is picked (a unique, or "Include Legendary") and off when the

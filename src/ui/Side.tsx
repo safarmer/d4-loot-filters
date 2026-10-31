@@ -27,11 +27,6 @@ export function Side({ model, sel, notes, update }: { model: Model; sel: string;
               onChange={(e) => update((d) => { d.colors[k] = argb(e.target.value); })} /> {label}
           </label>
         ))}
-        <h3>Rules</h3>
-        <label className="setting" title="Last rule before No Ma'am, so recolour rules still apply to mythics">
-          <input type="checkbox" checked={model.mythics} onChange={(e) => update((d) => { d.mythics = e.target.checked; })} />
-          Always show mythics (after the other rules)
-        </label>
       </details>
       <h2>Order <small>(end-game)</small></h2>
       <ol>

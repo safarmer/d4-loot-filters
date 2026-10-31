@@ -1,7 +1,7 @@
 // Slot model -> filter JSON (the structure tools/filter_tool.ts encodes).
 //
 // Model:
-//   {name, class, slot_idx, raw: [{place, rule}], mythics,
+//   {name, class, slot_idx, raw: [{place, rule}],
 //    colors: {gear, charm_set, charm_stats}, charms: CharmConfig, slots: {slot_key: SlotConfig}}
 // CharmConfig: enabled, sets [talisman set ids], desired [charm stat ids], n, mats
 //   Charm rules (same in both filters): "Charm Set+Stats" (set charm of a wanted set with n desired
@@ -62,8 +62,6 @@ export interface SlotConfig {
 export interface Model {
   name: string; class: string; slot_idx: number;
   raw: { place: Place; rule: Rule }[];
-  /** Show every mythic, as the last rule before `No Ma'am`. */
-  mythics: boolean;
   colors: Colors;
   charms: CharmConfig;
   slots: Record<string, SlotConfig>;
@@ -80,7 +78,7 @@ export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   const slots: Record<string, SlotConfig> = {};
   for (const k of Object.keys(mapping().slots)) slots[k] = defaultSlot();
   return {
-    name, class: cls, slot_idx: 1, raw: [], mythics: true,
+    name, class: cls, slot_idx: 1, raw: [],
     colors: { ...DEFAULT_COLORS }, charms: { enabled: false, sets: [], desired: [], n: 1, mats: true }, slots,
   };
 }
@@ -190,7 +188,7 @@ export function orderedRules(model: Model, profile: ProfileName = "endgame"): { 
   for (const [k, s] of Object.entries(model.slots))
     if (s.enabled) add(m.slots[k].label, slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear));
   add("kept as-is", model.raw.filter((r) => r.place === "last").map((r) => r.rule));
-  if (model.mythics) add("Settings", [structuredClone(MYTHICS)]);
+  add("Mythics", [structuredClone(MYTHICS)]); // always; the player can switch it off in game
   return out;
 }
 
