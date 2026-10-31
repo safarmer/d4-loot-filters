@@ -32,11 +32,6 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
         <legend>Set charms</legend>
         <div className="row">
           <label><input type="checkbox" checked={c.enabled} onChange={(e) => edit((d) => { d.enabled = e.target.checked; })} /> Enabled</label>
-          <label>Priority tier{" "}
-            <select value={c.tier} onChange={(e) => edit((d) => { d.tier = +e.target.value; })}>
-              {range(9).map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
           <label>Desired stats needed{" "}
             <select value={c.n} onChange={(e) => edit((d) => { d.n = +e.target.value; })}>
               {range(4).map((n) => <option key={n} value={n}>{n === 0 ? "off" : n}</option>)}

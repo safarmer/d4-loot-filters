@@ -1,7 +1,7 @@
 # D4 Slot Editor
 
 Character-sheet loot filter editor. Pick a class, click a paper-doll slot, pick uniques, legendaries
-and stats (tick = desired, star = greater affix wanted on that stat) and a priority tier.
+and stats (tick = desired, star = greater affix wanted on that stat).
 
 One model exports two filters; import both into the game and switch between them. Each slot has
 one "desired stats needed" count (n) and one "greater affixes to recolour" count (ga):
@@ -12,6 +12,13 @@ one "desired stats needed" count (n) and one "greater affixes to recolour" count
 | End-game | ancestral + n desired + ga greater affixes | ancestral + n desired |
 
 Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game.
+
+Rule order is fixed, not chosen. A rule sits above another only where that changes what matches
+(first match wins): inside a section, strong recolour before recolour before show, since those rules
+cover the same items. Sections cover different items (charms, each gear slot; uniques vs legendaries
+by rarity), so they keep a natural order: kept-as-is rules imported before any modelled rule,
+charms, gear slots, kept-as-is rules imported after, `No Ma'am`. The Order list in the right column
+shows the end-game output.
 
 A slot turns on when its first item is picked (a unique, or "Legendaries count") and off when the
 last is cleared; Charms do the same with wanted sets. Ticking stats alone does not change it, and the
@@ -94,7 +101,9 @@ records only. Loaders join the files with `assembleMapping()` in `src/mapping.ts
 Valid stats per slot = affix `arAllowedItemLabels` ∩ item type `arItemLabels`, filtered by class.
 
 ## Import
-Rules that do not fit the slot model stay as raw rules (kept in tier position) and are listed in the UI.
+Rules that do not fit the slot model stay as raw rules, before or after the modelled rules as imported,
+and are listed in the UI. A raw rule that sat between modelled rules gets a warning, because moving it
+after them could change what matches first.
 Known: rules with a `uniques` + `item_types` pair, rarity masks other than 8, and a second rule for
 the same slot stay raw. Multi-slot unique rules are split per slot (same behaviour).
 

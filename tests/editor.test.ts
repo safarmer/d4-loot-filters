@@ -47,11 +47,17 @@ test("rogue: round trip loses no rule (RoA Uniques splits per slot)", () => {
   assert.ok(diffs.filter((d) => d.startsWith("added")).every((d) => d.endsWith(" Uni OK") || d === "added: Charm Set"));
 });
 
-test("rules come out in tier order", () => {
+test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-as-is last", () => {
   const m = defaultModel("warlock");
-  Object.assign(m.slots.boots, { enabled: true, tier: 2, legendaries: true });
-  Object.assign(m.slots.helm, { enabled: true, tier: 1, legendaries: true });
-  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Charms/Seals for Mats", "Helm Leg", "Helm Leg OK", "Boots Leg", "Boots Leg OK", "No Ma'am"]);
+  Object.assign(m.slots.boots, { enabled: true, legendaries: true });
+  Object.assign(m.slots.helm, { enabled: true, legendaries: true });
+  const raw = (name: string) => ({ name, vis: 0, color: "0xFFFFFFFF", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: 32 }] });
+  m.raw = [{ place: "last", rule: raw("After") }, { place: "first", rule: raw("Before") }];
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name),
+    ["Before", "Charms/Seals for Mats", "Boots Leg", "Boots Leg OK", "Helm Leg", "Helm Leg OK", "After", "No Ma'am"]);
+  // the Warlock filter keeps its own order apart from the per-slot split
+  const { diffs } = roundtrip(load("strict_warlock_bs"));
+  assert.ok(!diffs.includes("same rules, different order") || diffs.some((d) => d.startsWith("added")));
 });
 
 test("valid stats depend on the slot", () => {

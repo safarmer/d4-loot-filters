@@ -1,15 +1,15 @@
 // Slot model -> filter JSON (the structure tools/filter_tool.ts encodes).
 //
 // Model:
-//   {name, class, slot_idx, raw: [{tier, rule}],
+//   {name, class, slot_idx, raw: [{place, rule}],
 //    colors: {gear, charm_set, charm_stats}, charms: CharmConfig, slots: {slot_key: SlotConfig}}
-// CharmConfig: enabled, tier, sets [talisman set ids], desired [charm stat ids], n, mats
+// CharmConfig: enabled, sets [talisman set ids], desired [charm stat ids], n, mats
 //   Charm rules (same in both filters): "Charm Set+Stats" (set charm of a wanted set with n desired
 //   stats, charm_stats colour) before "Charm Set" (any set charm of a wanted set, charm_set colour).
 //   With mats, "Charms/Seals for Mats" then shows every legendary-or-better charm and seal (set
 //   charms included) for crafting materials, so the two charm colours only mark the wanted ones.
 // SlotConfig:
-//   enabled, tier (lower = earlier),
+//   enabled,
 //   uniques [ids], legendaries, leg_rarity (8),
 //   desired [affix ids], ga_wanted [affix ids, starred; also desired], required [affix ids, from imports],
 //   n: desired stats needed, ga: greater affixes needed to recolour in the end-game filter
@@ -19,8 +19,13 @@
 //            show:     ancestral + n desired
 // The recolour rule comes first (first match wins). With ga 0 the end-game filter has no recolour rule.
 // All gear recolours use colors.gear.
-// Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game. Rules come
-// out in tier order.
+// Rule order is fixed, not chosen. A rule sits above another only where that changes what matches
+// (first match wins): inside a section, strong recolour (much better) before recolour before show,
+// since they cover the same items. Sections cover different items (charms vs each gear slot;
+// uniques vs legendaries by rarity), so they stay in natural order:
+//   kept-as-is rules imported before any modelled rule, charms, gear slots in slot order,
+//   kept-as-is rules imported after, `No Ma'am`.
+// Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game.
 import type { Condition, Filter, Rule } from "./codec.ts";
 import { mapping } from "./mapping.ts";
 
@@ -37,37 +42,40 @@ export interface Colors { gear: string; charm_set: string; charm_stats: string }
 /** Owner's colours: lemon yellow gear, orange set charms, yellow-green set charms with stats. */
 export const DEFAULT_COLORS: Colors = { gear: "0xFFFFE000", charm_set: "0xFFE89922", charm_stats: "0xFFD3E822" };
 
-export interface CharmConfig { enabled: boolean; tier: number; sets: number[]; desired: number[]; n: number; mats: boolean }
+/** Where a kept-as-is rule goes: before or after the modelled rules (as it was imported). */
+export type Place = "first" | "last";
+
+export interface CharmConfig { enabled: boolean; sets: number[]; desired: number[]; n: number; mats: boolean }
 /** Rarity mask of the materials rule: legendary, unique, mythic, set (owner's choice). */
 export const MATS_MASK = 120;
 
 export interface SlotConfig {
-  enabled: boolean; tier: number;
+  enabled: boolean;
   uniques: number[]; legendaries: boolean; leg_rarity: number;
   desired: number[]; ga_wanted: number[]; required: number[];
   n: number; ga: number;
 }
 export interface Model {
   name: string; class: string; slot_idx: number;
-  raw: { tier: number; rule: Rule }[];
+  raw: { place: Place; rule: Rule }[];
   colors: Colors;
   charms: CharmConfig;
   slots: Record<string, SlotConfig>;
 }
 
-export function defaultSlot(tier = 1): SlotConfig {
+export function defaultSlot(): SlotConfig {
   return {
-    enabled: false, tier, uniques: [], legendaries: false, leg_rarity: 8,
+    enabled: false, uniques: [], legendaries: false, leg_rarity: 8,
     desired: [], ga_wanted: [], required: [], n: 2, ga: 1,
   };
 }
 
 export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   const slots: Record<string, SlotConfig> = {};
-  Object.keys(mapping().slots).forEach((k, i) => { slots[k] = defaultSlot(i + 1); });
+  for (const k of Object.keys(mapping().slots)) slots[k] = defaultSlot();
   return {
     name, class: cls, slot_idx: 1, raw: [],
-    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, tier: 0, sets: [], desired: [], n: 1, mats: true }, slots,
+    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, sets: [], desired: [], n: 1, mats: true }, slots,
   };
 }
 
@@ -101,8 +109,10 @@ export function classSets(cls: string): number[] {
   return Object.entries(mapping().talisman_sets).filter(([, t]) => t.classes.includes(cls)).map(([i]) => Number(i));
 }
 
+/** Charm rules, strongest first: Set+Stats (strong recolour), Set (recolour), materials (show). */
 export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
   const m = mapping();
+  const out: Rule[] = [];
   const mats: Rule[] = c.mats ? [{ name: "Charms/Seals for Mats", vis: 0, color: "0xFFFF0000", enabled: 1, conditions: [
     { type: 1, kind: "rarity", value: MATS_MASK }, { type: 5, kind: "item_types", ids: [m.charm_type, m.seal_type] }] }] : [];
   if (!c.enabled || !c.sets.length) return mats;
@@ -111,7 +121,6 @@ export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
     { type: 9, kind: "talisman_sets", ids: [...c.sets] },
     { type: 5, kind: "item_types", ids: [m.charm_type] },
   ];
-  const out: Rule[] = [];
   if (c.desired.length && c.n > 0)
     out.push({ name: "Charm Set+Stats", vis: 2, color: colors.charm_stats, enabled: 1, conditions: [
       ...structuredClone(set), { type: 6, kind: "affixes", ids: [...c.desired], value: Math.min(c.n, c.desired.length) }] });
@@ -165,22 +174,23 @@ export function slotRules(key: string, s: SlotConfig, cls: string, label: string
   return out;
 }
 
+/** Rules for one profile in output order, without `No Ma'am`, each with the section it comes from. */
+export function orderedRules(model: Model, profile: ProfileName = "endgame"): { section: string; rule: Rule }[] {
+  const m = mapping();
+  const out: { section: string; rule: Rule }[] = [];
+  const add = (section: string, rules: Rule[]) => rules.forEach((rule) => out.push({ section, rule }));
+  add("kept as-is", model.raw.filter((r) => r.place === "first").map((r) => r.rule));
+  add("Charms", charmRules(model.charms, model.colors));
+  for (const [k, s] of Object.entries(model.slots))
+    if (s.enabled) add(m.slots[k].label, slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear));
+  add("kept as-is", model.raw.filter((r) => r.place === "last").map((r) => r.rule));
+  return out;
+}
+
 /** Filter for one profile. The endgame filter keeps the model's name; the starter adds " Starter". */
 export function compileModel(model: Model, profile: ProfileName = "endgame"): Filter {
   const m = mapping();
-  const order = Object.keys(m.slots);
-  // [tier, kind order (raw, charms, slot), index, rules]
-  type Item = [number, number, number, () => Rule[]];
-  const items: Item[] = [
-    ...Object.entries(model.slots).filter(([, s]) => s.enabled)
-      .map(([k, s]): Item => [s.tier, 2, order.indexOf(k),
-        () => slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear)]),
-    ...model.raw.map((r, i): Item => [r.tier, 0, i, () => [r.rule]]),
-  ];
-  if (model.charms.enabled || model.charms.mats) items.push([model.charms.tier, 1, 0, () => charmRules(model.charms, model.colors)]);
-  items.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-  const rules: Rule[] = items.flatMap(([, , , make]) => make());
-  rules.push({ ...HIDE_ALL });
+  const rules = [...orderedRules(model, profile).map((r) => r.rule), { ...HIDE_ALL }];
   const cid = m.filter_class_id[model.class];
   if (cid === undefined)
     throw new Error(`filter class_id for ${model.class} is unverified; import one of its filters first`);

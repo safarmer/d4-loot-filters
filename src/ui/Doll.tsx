@@ -20,11 +20,11 @@ export function Doll({ model, sel, onSelect }: { model: Model; sel: string; onSe
       {Object.entries(mapping().slots).map(([key, def]) => {
         const s = model.slots[key];
         return tile(key, def.label, s.enabled, model.colors.gear,
-          `tier ${s.tier} · ${s.uniques.length} uniques${s.legendaries ? " · legendaries" : ""}`);
+          `${s.uniques.length} uniques${s.legendaries ? " · legendaries" : ""}`);
       })}
       <hr className="doll-rule" />
       {tile(CHARMS, "Charms", c.enabled || c.mats, model.colors.charm_set,
-        c.enabled ? `tier ${c.tier} · ${c.sets.length} sets · ${c.desired.length} stats` : "materials only")}
+        c.enabled ? `${c.sets.length} sets · ${c.desired.length} stats` : "materials only")}
     </section>
   );
 }

@@ -3,8 +3,8 @@
 // stats, n and ga; an ancestral show rule without one sets desired stats and n. The end-game compile
 // also adds the show rule an imported recolour-only slot lacks; `roundtrip` reports those as added.
 //
-// Rules that do not fit stay in the model verbatim as raw rules, placed by tier between the
-// slot rules, so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
+// Rules that do not fit stay in the model verbatim as raw rules, before or after the modelled rules
+// (as imported), so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
 import { compileModel, defaultModel, MATS_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
@@ -94,7 +94,8 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   const model = defaultModel(cls, doc.name || "Imported");
   model.slot_idx = doc.slot_idx ?? 1;
   const pairs = new Map<string, Set<string>>(); // slot -> imported "kind/vis" pairs
-  let tier = 0;
+  let modelled = false; // a modelled rule seen: later kept-as-is rules go after the modelled ones
+  const moved: string[] = []; // kept-as-is rules that sat between modelled rules
   const last = doc.rules.at(-1);
   const endsHidden = !!last && last.vis === 3 && !last.conditions.length;
 
@@ -106,13 +107,14 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     if (idx === doc.rules.length - 1 && endsHidden) return; // No Ma'am: compiler appends it
     const keepRaw = (why: string | null) => {
       if (why) warnings.push(`${rule.name}: ${why}, kept as raw rule`);
-      model.raw.push({ tier: tier + 0.5, rule });
+      model.raw.push({ place: modelled ? "last" : "first", rule });
+      if (modelled) moved.push(rule.name);
     };
 
     if (isMatsRule(rule, m)) {
       if (model.charms.mats) return keepRaw("materials rule already modelled");
-      if (!model.charms.enabled) { tier += 1; model.charms.tier = tier; }
       model.charms.mats = true;
+      modelled = true;
       return;
     }
 
@@ -125,7 +127,8 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (c.enabled && !deepEqual(c.sets, sets)) return keepRaw("sets differ from the other charm rule");
       if ((by.get(6)?.ga_required_on ?? []).length) return keepRaw("charm GA-on-stat is not modelled");
       if (model.charms.mats) return keepRaw("charm rule after the materials rule");
-      if (!c.enabled) { tier += 1; Object.assign(c, { enabled: true, tier, sets: [...sets] }); }
+      if (!c.enabled) Object.assign(c, { enabled: true, sets: [...sets] });
+      modelled = true;
       if (charm === "stats") { c.desired = [...(by.get(6)!.ids ?? [])]; c.n = by.get(6)!.value ?? 1; }
       model.colors[colorKey] = rule.color;
       charmKinds.add(charm);
@@ -168,11 +171,11 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     if (recolour && gearColor && rule.color !== model.colors.gear) return keepRaw("colour differs from the gear colour");
 
     if (slots.length > 1) warnings.push(`${rule.name}: uniques span slots ${slots.join(", ")}; split into one rule per slot`);
-    if (slots.some((sk) => !model.slots[sk].enabled)) tier += 1;
+    modelled = true;
     for (const sk of slots) {
       const s = model.slots[sk];
       if (!s.enabled) {
-        Object.assign(s, { enabled: true, tier, required: probe.required, desired: probe.desired, n, ga: 0, ga_wanted: [] });
+        Object.assign(s, { enabled: true, required: probe.required, desired: probe.desired, n, ga: 0, ga_wanted: [] });
         pairs.set(sk, new Set());
       }
       if (recolour) {
@@ -186,6 +189,13 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       pairs.get(sk)!.add(pair);
     }
   });
+  // a kept-as-is rule found after a modelled one goes after all modelled rules; say so when another
+  // modelled rule followed it, since that is a move that could change what matches first
+  const lastModelled = doc.rules.findLastIndex((r) => !model.raw.some((x) => x.rule === r) && !(r.vis === 3 && !r.conditions.length));
+  for (const name of moved) {
+    const i = doc.rules.findIndex((r) => r.name === name);
+    if (i < lastModelled) warnings.push(`${name}: moved after the modelled rules; check it is not shadowed`);
+  }
   return { model, warnings };
 }
 

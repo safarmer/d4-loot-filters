@@ -63,11 +63,6 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
         <legend>Slot</legend>
         <div className="row">
           <label><input type="checkbox" checked={s.enabled} onChange={(e) => edit((d) => { d.enabled = e.target.checked; })} /> Enabled</label>
-          <label>Priority tier{" "}
-            <select value={s.tier} onChange={(e) => edit((d) => { d.tier = +e.target.value; })}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
         </div>
       </fieldset>
 
