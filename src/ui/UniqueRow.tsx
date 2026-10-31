@@ -20,7 +20,7 @@ function UniqueCard({ id, at }: { id: number; at: DOMRect }) {
       {u.power && <p>{u.power}</p>}
       {u.stats?.length ? <ul>{u.stats.map((s, i) => <li key={i}>{s}</li>)}</ul> : null}
       {u.flavor && <p className="flavor">{u.flavor}</p>}
-      {u.power?.includes("#") && <small>"#" is a value that rolls on the item.</small>}
+      {u.power?.includes("#") && <small>"#": depends on your character (e.g. weapon damage) or is unreadable in the game files.</small>}
     </div>,
     document.body,
   );

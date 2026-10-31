@@ -113,17 +113,48 @@ function display(stringsDir: string, prefix: string, name: string, label = "Name
   return load(p).arStrings.find((e: any) => e.szLabel === label)?.szText ?? null;
 }
 
+/** An affix value formula's [min, max]: a plain number, or the last two arguments of a range call. */
+function formulaRange(formula: string): [number, number] | null {
+  const f = formula.trim();
+  if (/^-?[\d.]+$/.test(f)) return [Number(f), Number(f)];
+  const call = /^Float(?:Random)?RangeWithInterval\w*\((.*)\)$/.exec(f);
+  if (!call) return null;
+  const nums = call[1].split(",").map((a) => a.trim()).filter((a) => /^-?[\d.]+$/.test(a)).map(Number);
+  return nums.length >= 2 ? [nums[nums.length - 2], nums[nums.length - 1]] : null;
+}
+
+const num = (v: number) => String(Math.round(v * 100) / 100);
+
+/**
+ * A value slot's text: the expression evaluated at the affix's minimum and maximum ("80-100%"),
+ * or "#" when it depends on something outside the item (e.g. the character's weapon damage).
+ */
+function slotText(expr: string, fmt: string, vars: Record<string, [number, number]>, statics: number[]): string {
+  const pct = fmt.includes("%") ? "%" : "";
+  const at = (i: 0 | 1): number | null => {
+    let e = expr.replace(/Affix\."Static[ _]Value[ _](\d+)"?/g, (_, n) => String(statics[+n] ?? NaN))
+      .replace(/Affix_Value_(\d+)/g, (_, n) => String(vars[`Affix_Value_${n}`]?.[i] ?? NaN));
+    if (!/^[\d.\s+\-*/()]+$/.test(e)) return null;
+    try { const v = Function(`return (${e})`)(); return Number.isFinite(v) ? v : null; } catch { return null; }
+  };
+  const a = at(0), b = at(1);
+  if (a === null || b === null) return "#" + pct;
+  const [lo, hi] = a <= b ? [a, b] : [b, a];
+  return (lo === hi ? num(lo) : `${num(lo)}-${num(hi)}`) + pct;
+}
+
 /**
  * Game text markup to plain text: {if:...}a{else}b{/if} keeps b (the non-mythic wording), other
- * {if} blocks drop, colour/underline tags drop, value slots [expr|fmt|] become "#" or "#%".
+ * {if} blocks drop, colour/underline tags drop, value slots [expr|fmt|] go through `slot`
+ * (default "#" or "#%").
  */
-function plain(text: string | null): string | undefined {
+function plain(text: string | null, slot: (expr: string, fmt: string) => string = (_, f) => (f.includes("%") ? "#%" : "#")): string | undefined {
   if (!text) return undefined;
   const out = text
     .replace(/\{if:[^}]*\}((?:(?!\{if:)[\s\S])*?)\{else\}([\s\S]*?)\{\/if\}/g, "$2")
     .replace(/\{if:[^}]*\}[\s\S]*?\{\/if\}/g, "")
-    .replace(/\[[^\]|]*\|([^|\]]*)\|?[^\]]*\]/g, (_, fmt: string) => (fmt.includes("%") ? "#%" : "#"))
-    .replace(/\[[^\]]*\]/g, "#")
+    .replace(/\[([^\]|]*)\|([^|\]]*)\|?[^\]]*\]/g, (_, expr: string, fmt: string) => slot(expr, fmt))
+    .replace(/\[([^\]]*)\]/g, (_, expr: string) => slot(expr, ""))
     .replace(/\{[^}]*\}/g, "")
     .replace(/\s+/g, " ").trim();
   return out || undefined;
@@ -184,7 +215,16 @@ function uniqueText(name: string, d: any): Pick<UniqueDef, "power" | "flavor" | 
   const forced: any[] = d.arForcedAffixes ?? [];
   const power = forced.find((a) => a?.name === name) ?? forced[0];
   const out: Pick<UniqueDef, "power" | "flavor" | "stats"> = {};
-  const p = power && plain(display(strings, "Affix", power.name, "Desc"));
+  // the power affix's value ranges and fixed values fill the text's value slots
+  const affixFile = power && join(meta, "Affix", `${power.name}.aff.json`);
+  const aff = affixFile && existsSync(affixFile) ? load(affixFile) : null;
+  const vars: Record<string, [number, number]> = {};
+  for (const t of aff?.ptItemAffixAttributes ?? []) {
+    const r = formulaRange(t.tAttribute?.szAttributeFormula?.value ?? "");
+    if (r && t.tAttribute.__eAttribute_name__) vars[t.tAttribute.__eAttribute_name__] = r;
+  }
+  const statics: number[] = aff?.arStaticValues ?? [];
+  const p = power && plain(display(strings, "Affix", power.name, "Desc"), (e, f) => slotText(e, f, vars, statics));
   if (p) out.power = p;
   const f = plain(display(strings, "Item", name, "Flavor"));
   if (f) out.flavor = f;
