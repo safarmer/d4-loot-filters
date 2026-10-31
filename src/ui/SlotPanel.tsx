@@ -105,6 +105,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
         </div>
       </fieldset>
 
+      <div className="pair">
       <fieldset>
         <legend>Uniques to keep</legend>
         <input placeholder="filter…" size={20} value={uq} onChange={(e) => setUq(e.target.value)} />
@@ -131,7 +132,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
           <small>{s.required.length} required</small>
         </div>
         <input placeholder="filter stats…" size={20} value={aq} onChange={(e) => setAq(e.target.value)} />
-        <div className="list" style={{ maxHeight: 320 }}>
+        <div className="list">
           {statGroups.map(([group, list]) => (
             <div key={group} role="group" aria-label={group}>
               <div className="group-head">{group} <small>{list.length}</small></div>
@@ -147,6 +148,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
           ))}
         </div>
       </fieldset>
+      </div>
     </section>
   );
 }
