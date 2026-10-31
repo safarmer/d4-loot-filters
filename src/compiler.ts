@@ -29,7 +29,7 @@
 // (first match wins): inside a section, strong recolour (much better) before recolour before show,
 // since they cover the same items. Sections cover different items (charms vs each gear slot;
 // uniques vs legendaries by rarity), so they stay in natural order:
-//   kept-as-is rules imported before any modelled rule, charms, gear slots in slot order,
+//   Codex Upgrades (fixed), kept-as-is rules imported before any modelled rule, charms, gear slots,
 //   kept-as-is rules imported after, Mythics, `No Ma'am`.
 // Mythics (show rarity 32) comes last so the unique recolour rules (rarity 48 = unique + mythic)
 // match mythics first.
@@ -41,6 +41,8 @@ export const UNIQUE_MASK = 48; // unique + mythic
 export const SET_MASK = 64;
 const HIDE_ALL: Rule = { name: "No Ma'am", vis: 3, color: "0x00000000", enabled: 1, conditions: [] };
 export const MYTHIC_MASK = 32;
+/** Fixed first rule: recolour Codex of Power upgrades (owner's red). */
+const CODEX: Rule = { name: "Codex Upgrades", vis: 2, color: "0xFFFF0000", enabled: 1, conditions: [{ type: 3, kind: "codex", flag: 1 }] };
 const MYTHICS: Rule = { name: "Mythics", vis: 0, color: "0xFFFF0000", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: MYTHIC_MASK }] };
 
 export type ProfileName = "starter" | "endgame";
@@ -294,6 +296,7 @@ export function gearRules(model: Model, profile: ProfileName = "endgame"): { sec
 export function orderedRules(model: Model, profile: ProfileName = "endgame"): { section: string; rule: Rule }[] {
   const out: { section: string; rule: Rule }[] = [];
   const add = (section: string, rules: Rule[]) => rules.forEach((rule) => out.push({ section, rule }));
+  add("Codex", [structuredClone(CODEX)]); // always first
   add("kept as-is", model.raw.filter((r) => r.place === "first").map((r) => r.rule));
   add("Charms", charmRules(model.charms, model.colors));
   out.push(...gearRules(model, profile));

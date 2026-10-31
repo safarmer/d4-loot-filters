@@ -65,7 +65,7 @@ test("import cleanup: bad charm rules, gear rarity, gear colour", () => {
   // Boots Good GA Leg: rarity 14 -> 8, royal blue -> the shared gear colour, modelled as boots legendaries
   assert.ok(model.slots.boots.enabled && model.slots.boots.legendaries && model.slots.boots.leg_rarity === 8);
   assert.equal(model.colors.gear, "0xFFFFE000");
-  assert.ok(!model.raw.some((r) => /Unique Charms|Boots Good GA Leg/.test(r.rule.name)));
+  assert.ok(!model.raw.some((r) => /Unique Charms|Boots Good GA Leg|Codex/.test(r.rule.name)));
 });
 
 test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-as-is last", () => {
@@ -75,7 +75,7 @@ test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-
   const raw = (name: string) => ({ name, vis: 0, color: "0xFFFFFFFF", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: 32 }] });
   m.raw = [{ place: "last", rule: raw("After") }, { place: "first", rule: raw("Before") }];
   assert.deepEqual(compileModel(m).rules.map((r) => r.name),
-    ["Before", "Charms/Seals for Mats", "Boots/Helm Leg", "Boots/Helm Leg OK", "After", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
+    ["Codex Upgrades", "Before", "Charms/Seals for Mats", "Boots/Helm Leg", "Boots/Helm Leg OK", "After", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
   // the Warlock filter keeps its own order apart from the per-slot split
   const { diffs } = roundtrip(load("strict_warlock_bs"));
   assert.ok(!diffs.includes("same rules, different order") || diffs.some((d) => d.startsWith("added")));
@@ -146,27 +146,28 @@ test("starter and end-game filters from one model", () => {
   const starter = compileModel(m, "starter"), endgame = compileModel(m, "endgame");
   assert.equal(starter.name, "Warlock Starter");
   assert.equal(endgame.name, "Warlock");
-  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["All Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
-  assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["Any 2GA+ Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
+  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Codex Upgrades", 2], ["Helm Uni", 2], ["Helm Uni OK", 0], ["All Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
+  assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Codex Upgrades", 2], ["Helm Uni", 2], ["Helm Uni OK", 0], ["Any 2GA+ Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
   const types = (r: { conditions: { type: number | null }[] }) => r.conditions.map((c) => c.type).sort();
   const cond = (r: (typeof starter.rules)[0], t: number) => r.conditions.find((c) => c.type === t);
+  const rule = (f: typeof starter, name: string) => f.rules.find((r) => r.name === name)!;
   // starter: recolour on 2 desired stats only (no GA, no ancestral, no GA-on-stat); show always
-  assert.deepEqual(types(starter.rules[0]), [1, 6, 8]);
-  assert.equal(cond(starter.rules[0], 6)!.value, 2);
-  assert.equal(cond(starter.rules[0], 6)!.ga_required_on, undefined);
-  assert.deepEqual(types(starter.rules[1]), [1, 8]);
+  assert.deepEqual(types(rule(starter, "Helm Uni")), [1, 6, 8]);
+  assert.equal(cond(rule(starter, "Helm Uni"), 6)!.value, 2);
+  assert.equal(cond(rule(starter, "Helm Uni"), 6)!.ga_required_on, undefined);
+  assert.deepEqual(types(rule(starter, "Helm Uni OK")), [1, 8]);
   // end-game: recolour = ancestral + 2 desired + 1 GA on the starred stat; show = ancestral + 2 desired
-  assert.deepEqual(types(endgame.rules[0]), [1, 2, 4, 6, 8]);
-  assert.equal(cond(endgame.rules[0], 4)!.value, 1);
-  assert.deepEqual(cond(endgame.rules[0], 6)!.ga_required_on, [[1829586, 1829586]]);
-  assert.deepEqual(types(endgame.rules[1]), [1, 2, 6, 8]);
+  assert.deepEqual(types(rule(endgame, "Helm Uni")), [1, 2, 4, 6, 8]);
+  assert.equal(cond(rule(endgame, "Helm Uni"), 4)!.value, 1);
+  assert.deepEqual(cond(rule(endgame, "Helm Uni"), 6)!.ga_required_on, [[1829586, 1829586]]);
+  assert.deepEqual(types(rule(endgame, "Helm Uni OK")), [1, 2, 6, 8]);
   for (const f of [starter, endgame]) encode(f);
   // no GA wanted: the end-game filter only shows
   m.slots.helm.ga = 0;
-  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Uni OK", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Codex Upgrades", "Helm Uni OK", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
   // no desired stats: the starter only shows
   m.slots.helm.desired = []; m.slots.helm.ga_wanted = [];
-  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK", "All Ancestral", "Mythics", "No Ma'am"]);
+  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Codex Upgrades", "Helm Uni OK", "All Ancestral", "Mythics", "No Ma'am"]);
 });
 
 test("mythics: shown last, after the unique recolours that also match them", () => {
@@ -218,15 +219,15 @@ test("charms: uniques and sets share stats and GA; +GA, +Stats, plain per group;
   Object.assign(m.slots.helm, { enabled: true, uniques: [2647147] });
   m.colors = { ...m.colors, gear: "0xFF112233" };
   const f = compileModel(m, "starter");
-  assert.deepEqual(f.rules.slice(0, 7).map((r) => [r.name, r.color]), [
+  assert.deepEqual(f.rules.slice(1, 8).map((r) => [r.name, r.color]), [
     ["Unique Charms+GA", "0xFF00FFF4"], ["Unique Charms+Stats", "0xFFD3E822"], ["Unique Charms", "0xFF4E8A20"],
     ["Charm Set+GA", "0xFF00FFF4"], ["Charm Set+Stats", "0xFFD3E822"], ["Charm Set", "0xFFE89922"],
     ["Charms/Seals for Mats", "0xFFFF0000"]]);
-  const ga = f.rules[3].conditions;
+  const ga = f.rules[4].conditions;
   assert.deepEqual(ga.map((c) => c.type).sort(), [1, 4, 5, 6, 9]);
   assert.deepEqual(ga.find((c) => c.type === 6)!.ga_required_on, [[2545972, 2545972]]);
-  assert.equal(f.rules[4].conditions.find((c) => c.type === 6)!.ga_required_on, undefined);
-  assert.ok(f.rules.filter((r) => r.vis === 2 && !/Charm/.test(r.name)).every((r) => r.color === "0xFF112233"));
+  assert.equal(f.rules[5].conditions.find((c) => c.type === 6)!.ga_required_on, undefined);
+  assert.ok(f.rules.filter((r) => r.vis === 2 && !/Charm|Codex/.test(r.name)).every((r) => r.color === "0xFF112233"));
   encode(f);
   // a compiled filter imports back into the same charm settings
   const back = roundtrip(compileModel(m)).model.charms;

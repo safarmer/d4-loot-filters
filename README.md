@@ -130,7 +130,8 @@ rules are cleaned to fit where the intent is clear, each with an import note:
 - gear unique IDs in a charm-type uniques rule are removed (they can never match);
 - a legendary rule with a greater affix condition and rarity 14 becomes rarity 8 (greater affixes
   only roll on legendary or better);
-- gear recolours adopt the shared gear colour; a mythics-only rule becomes the fixed Mythics rule.
+- gear recolours adopt the shared gear colour; a mythics-only rule becomes the fixed Mythics rule,
+  and a codex-upgrade rule the fixed Codex Upgrades rule (always first: recolour red).
 Rules that do not fit the slot model stay as raw rules, before or after the modelled rules as imported,
 and are listed in the UI. A raw rule that sat between modelled rules gets a warning, because moving it
 after them could change what matches first.

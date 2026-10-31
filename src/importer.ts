@@ -175,6 +175,12 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     const types = rule.conditions.map((c) => `${c.type}:${c.value ?? ""}`).sort().join(",");
     if (rule.vis === 0 && (types === "2:4" || types === "2:4,4:2")) return;
 
+    // a codex-upgrade rule: the compiler always adds one as the first rule
+    if (rule.conditions.length === 1 && rule.conditions[0].type === 3) {
+      if (rule.vis !== 2 || rule.color !== "0xFFFF0000") warnings.push(`${rule.name}: replaced by the fixed Codex Upgrades rule (recolour red, first)`);
+      return;
+    }
+
     // a "mythics only" rule (show or recolour): the compiler always adds one (last, before No Ma'am)
     if (rule.conditions.length === 1 && rule.conditions[0].type === 1 && rule.conditions[0].value === MYTHIC_MASK) {
       if (rule.vis !== 0) warnings.push(`${rule.name}: replaced by the fixed Mythics rule (show, last)`);
