@@ -2,6 +2,7 @@ import { orderedRules, type Colors, type Model } from "../compiler.ts";
 import type { Rule } from "../codec.ts";
 import type { Update } from "./App.tsx";
 import { argb, css } from "./colors.ts";
+import { Summary } from "./Summary.tsx";
 
 const COLOR_LABEL: [keyof Colors, string][] = [
   ["gear", "Gear (armour, jewellery, weapons)"],
@@ -9,7 +10,7 @@ const COLOR_LABEL: [keyof Colors, string][] = [
   ["charm_stats", "Charm of a wanted set + desired stats"],
 ];
 
-export function Side({ model, notes, update }: { model: Model; notes: string[]; update: Update }) {
+export function Side({ model, sel, notes, update }: { model: Model; sel: string; notes: string[]; update: Update }) {
   // the real end-game output order (see orderedRules)
   let rows: { section: string; rule: Rule }[] = [];
   try { rows = orderedRules(model, "endgame"); } catch { /* unverified class: nothing to list */ }
@@ -37,6 +38,7 @@ export function Side({ model, notes, update }: { model: Model; notes: string[]; 
         ))}
         <li>No Ma'am (hides the rest; can be switched off in game)</li>
       </ol>
+      <Summary model={model} sel={sel} />
       <h2>Kept as-is <small>(rules the slot model cannot express)</small></h2>
       <ul>
         {model.raw.map((r, i) => (

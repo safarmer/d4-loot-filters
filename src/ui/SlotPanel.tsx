@@ -83,22 +83,6 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
             </select>
           </label>
         </div>
-        <table className="profiles">
-          <thead><tr><th>Filter</th><th>Shows</th><th>Recolours</th></tr></thead>
-          <tbody>
-            <tr>
-              <th scope="row">Starter</th>
-              <td>always</td>
-              <td>{s.n > 0 && s.desired.length ? `${s.n} desired stat${s.n > 1 ? "s" : ""}` : "never (no desired stats)"}</td>
-            </tr>
-            <tr>
-              <th scope="row">End-game</th>
-              <td>ancestral{s.n > 0 && s.desired.length ? ` + ${s.n} desired` : ""}</td>
-              <td>{s.ga > 0 ? `ancestral${s.n > 0 && s.desired.length ? ` + ${s.n} desired` : ""} + ${s.ga} GA` : "never"}</td>
-            </tr>
-          </tbody>
-        </table>
-        <small>Starred stats must be the greater affix in the end-game recolour.</small>
       </fieldset>
 
       <div className="pair">

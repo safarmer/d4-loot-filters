@@ -98,7 +98,7 @@ export function App() {
         {sel === CHARMS
           ? <CharmPanel key={`${model.class}/charms`} model={model} update={update} />
           : <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />}
-        <Side model={model} notes={notes} update={update} />
+        <Side model={model} sel={sel} notes={notes} update={update} />
       </main>
     </>
   );

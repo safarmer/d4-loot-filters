@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { classSets, validCharmAffixes, type CharmConfig, type Model } from "../compiler.ts";
 import { mapping } from "../mapping.ts";
 import type { Update } from "./App.tsx";
-import { css } from "./colors.ts";
 import { StatList } from "./StatList.tsx";
 
 const range = (n: number) => Array.from({ length: n + 1 }, (_, i) => i);
@@ -38,19 +37,6 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
             </select>
           </label>
         </div>
-        <table className="profiles">
-          <thead><tr><th>Both filters recolour</th><th>Colour</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>a wanted set{c.n > 0 && c.desired.length ? ` with ${c.n} desired stat${c.n > 1 ? "s" : ""}` : " (no desired stats: off)"}</td>
-              <td><span className="sw" style={{ background: css(model.colors.charm_stats) }} /></td>
-            </tr>
-            <tr>
-              <td>any charm of a wanted set</td>
-              <td><span className="sw" style={{ background: css(model.colors.charm_set) }} /></td>
-            </tr>
-          </tbody>
-        </table>
         <label className="setting">
           <input type="checkbox" checked={c.mats} onChange={(e) => update((d) => { d.charms.mats = e.target.checked; })} />
           Always show legendary-or-better charms and seals (materials), after the rules above
