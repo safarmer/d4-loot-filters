@@ -6,8 +6,7 @@ import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
 import { SlotPanel } from "./SlotPanel.tsx";
 import { CharmPanel } from "./CharmPanel.tsx";
-import { CHARMS, Doll, UNIQUE_CHARMS } from "./Doll.tsx";
-import { UniqueCharmPanel } from "./UniqueCharmPanel.tsx";
+import { CHARMS, Doll } from "./Doll.tsx";
 import { Side } from "./Side.tsx";
 import { Notes } from "./Notes.tsx";
 
@@ -103,7 +102,6 @@ export function App() {
         <Doll model={model} sel={sel} onSelect={setSel} />
         <div className="center">
           {sel === CHARMS ? <CharmPanel key={`${model.class}/charms`} model={model} update={update} />
-            : sel === UNIQUE_CHARMS ? <UniqueCharmPanel key={`${model.class}/ucharms`} model={model} update={update} />
             : <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />}
           <Notes model={model} notes={notes} update={update} />
         </div>

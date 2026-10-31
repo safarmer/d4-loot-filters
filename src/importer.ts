@@ -52,28 +52,32 @@ function isMatsRule(rule: Rule, m: Mapping): boolean {
     && deepEqual([...(by.get(5)?.ids ?? [])].sort(), [m.charm_type, m.seal_type].sort());
 }
 
-/** "picked": charm item type + only charm uniques (at most MAX_UNIQUES); "all": unique rarity + charm type only. */
-function classifyUniqueCharm(rule: Rule, m: Mapping): "picked" | "all" | null {
-  if (!rule.enabled || rule.vis !== 2) return null;
-  const by = byType(rule.conditions);
-  const types = [...(by.get(5)?.ids ?? [])].sort();
-  const charmTypes = types.length && types.every((t) => t === m.charm_type || t === m.seal_type) && types.includes(m.charm_type);
-  if (rule.conditions.length === 2 && charmTypes && by.has(8)) {
-    const ids = by.get(8)!.ids ?? [];
-    if (ids.length <= MAX_UNIQUES && ids.every((i) => m.uniques[String(i)]?.slot === "charm")) return "picked";
-  }
-  if (rule.conditions.length === 2 && by.get(1)?.value === UNIQUE_MASK && deepEqual(types, [m.charm_type])) return "all";
-  return null;
-}
+type CharmGroup = "uni" | "set" | "any";
+type CharmLevel = "ga" | "stats" | "plain";
 
-/** Set-charm recolour rule: "set" (sets only) or "stats" (sets + an affix condition), else null. */
-function classifyCharm(rule: Rule, m: Mapping): "set" | "stats" | null {
+/** A charm recolour rule: picked unique charms, wanted sets, or all unique charms, at a level. */
+function classifyCharm(rule: Rule, m: Mapping): { group: CharmGroup; level: CharmLevel } | null {
+  if (!rule.enabled || rule.vis !== 2) return null;
   const types = rule.conditions.map((c) => c.type as number);
-  if (!rule.enabled || rule.vis !== 2 || types.some((t) => ![1, 5, 6, 9].includes(t))) return null;
-  if ([1, 5, 6, 9].some((t) => types.filter((x) => x === t).length > 1)) return null;
+  if (new Set(types).size !== types.length) return null;
   const by = byType(rule.conditions);
-  if (by.get(1)?.value !== SET_MASK || !by.has(9) || !deepEqual(by.get(5)?.ids, [m.charm_type])) return null;
-  return by.has(6) ? "stats" : "set";
+  const itemTypes = [...(by.get(5)?.ids ?? [])].sort();
+  if (deepEqual(types.slice().sort(), [1, 5]) && by.get(1)!.value === UNIQUE_MASK && deepEqual(itemTypes, [m.charm_type]))
+    return { group: "any", level: "plain" };
+  const level: CharmLevel = by.has(4) ? "ga" : by.has(6) ? "stats" : "plain";
+  if (level === "ga" && !by.has(6)) return null;
+  if (by.has(9)) {
+    if (types.some((t) => ![1, 4, 5, 6, 9].includes(t)) || by.get(1)?.value !== SET_MASK || !deepEqual(itemTypes, [m.charm_type])) return null;
+    return { group: "set", level };
+  }
+  if (by.has(8)) {
+    const ids = by.get(8)!.ids ?? [];
+    if (types.some((t) => ![4, 5, 6, 8].includes(t)) || !itemTypes.includes(m.charm_type)
+      || itemTypes.some((t) => t !== m.charm_type && t !== m.seal_type)) return null;
+    if (ids.length > MAX_UNIQUES || !ids.every((i) => m.uniques[String(i)]?.slot === "charm")) return null;
+    return { group: "uni", level };
+  }
+  return null;
 }
 
 /** Returns [kind, slot keys] or null. */
@@ -133,24 +137,6 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     if (rule.vis === 0 && rule.conditions.length === 1 && rule.conditions[0].type === 1
       && rule.conditions[0].value === MYTHIC_MASK) return;
 
-    // unique charm rules: picked list (charm uniques with the charm item type) or "all unique charms"
-    const uc = classifyUniqueCharm(rule, m);
-    if (uc) {
-      const u = model.unique_charms, by = byType(rule.conditions);
-      if (model.charms.mats) return keepRaw("unique charm rule after the materials rule");
-      if (uc === "picked") {
-        if (u.enabled) return keepRaw("unique charms already picked by another rule");
-        Object.assign(u, { enabled: true, uniques: [...(by.get(8)!.ids ?? [])] });
-        model.colors.unique_charm = rule.color;
-      } else {
-        if (u.any) return keepRaw("all unique charms already modelled");
-        u.any = true;
-        model.colors.any_unique_charm = rule.color;
-      }
-      modelled = true;
-      return;
-    }
-
     if (isMatsRule(rule, m)) {
       if (model.charms.mats) return keepRaw("materials rule already modelled");
       model.charms.mats = true;
@@ -160,18 +146,40 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
 
     const charm = classifyCharm(rule, m);
     if (charm) {
-      const by = byType(rule.conditions);
-      const c = model.charms, sets = by.get(9)!.ids ?? [];
-      const colorKey = charm === "set" ? "charm_set" : "charm_stats";
-      if (charmKinds.has(charm)) return keepRaw("charms already have this rule");
-      if (c.enabled && !deepEqual(c.sets, sets)) return keepRaw("sets differ from the other charm rule");
-      if ((by.get(6)?.ga_required_on ?? []).length) return keepRaw("charm GA-on-stat is not modelled");
-      if (model.charms.mats) return keepRaw("charm rule after the materials rule");
-      if (!c.enabled) Object.assign(c, { enabled: true, sets: [...sets] });
+      const c = model.charms, by = byType(rule.conditions), key = `${charm.group}/${charm.level}`;
+      if (charmKinds.has(key)) return keepRaw("charms already have this rule");
+      if (c.mats) return keepRaw("charm rule after the materials rule");
+      if (charm.group === "any") {
+        c.any_unique = true;
+        model.colors.any_unique_charm = rule.color;
+      } else {
+        const items = charm.group === "uni" ? by.get(8)!.ids ?? [] : by.get(9)!.ids ?? [];
+        const have = charm.group === "uni" ? c.uniques : c.sets;
+        const groupSeen = [...charmKinds].some((k) => k.startsWith(charm.group + "/"));
+        if (groupSeen && !deepEqual(have, items)) return keepRaw(`${charm.group === "uni" ? "uniques" : "sets"} differ from the other charm rule`);
+        const statsSeen = [...charmKinds].some((k) => k.endsWith("/stats") || k.endsWith("/ga"));
+        if (charm.level !== "plain") {
+          const a = by.get(6)!, ids = a.ids ?? [], pairs = a.ga_required_on ?? [];
+          if (pairs.some(([x, y]) => x !== y) || (charm.level === "stats" && pairs.length)) return keepRaw("charm GA-on-stat layout does not fit");
+          if (statsSeen && (!deepEqual(c.desired, ids) || c.n !== a.value)) return keepRaw("charm stats differ from the other charm rule");
+          c.desired = [...ids];
+          c.n = a.value ?? 1;
+          if (charm.level === "ga") {
+            const gaSeen = [...charmKinds].some((k) => k.endsWith("/ga"));
+            const ga = by.get(4)!.value ?? 1, starred = pairs.map(([x]) => x);
+            if (gaSeen && (c.ga !== ga || !deepEqual(c.ga_wanted, starred))) return keepRaw("charm greater affixes differ from the other charm rule");
+            c.ga = ga;
+            c.ga_wanted = starred;
+          }
+        }
+        if (charm.group === "uni") c.uniques = [...items]; else c.sets = [...items];
+        c.enabled = true;
+        const colorKey = charm.level === "ga" ? "charm_ga" : charm.level === "stats" ? "charm_stats"
+          : charm.group === "uni" ? "unique_charm" : "charm_set";
+        model.colors[colorKey] = rule.color;
+      }
+      charmKinds.add(key);
       modelled = true;
-      if (charm === "stats") { c.desired = [...(by.get(6)!.ids ?? [])]; c.n = by.get(6)!.value ?? 1; }
-      model.colors[colorKey] = rule.color;
-      charmKinds.add(charm);
       return;
     }
 
