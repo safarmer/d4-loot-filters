@@ -2,24 +2,52 @@
 
 Character-sheet loot filter editor. Pick a class, click a paper-doll slot, set uniques, legendaries,
 stats (desired N-of, GA wanted, required) and a priority tier. Compile writes rules in tier order with
-`No Ma'am` last, encodes through `tools/filter_tool.ts` (round-trip checked) and copies the string.
+`No Ma'am` last, encodes through `src/codec.ts` (round-trip checked) and copies the string.
+
+All TypeScript. No Python.
 
 ```
 npm install                 # once: @bufbuild/protobuf, typescript (type checking only)
+npm start                   # node server.ts -> http://127.0.0.1:8470
+npm test                    # codec golden tests + slot model tests
 npm run typecheck           # tsc (TypeScript 7)
-python server.py            # http://127.0.0.1:8470
-npm test                    # codec golden tests against the working filters
-python -m unittest discover tests
 npm run filter -- check|decode|encode <in> [out]
-python tools/build_mapping.py <d4data>/json     # rebuild data/mapping.json
+npm run build-mapping -- <d4data>/json      # rebuild data/mapping.json
 ```
 
 TypeScript files run directly on Node 24+ (built-in type stripping), so there is no ts-node or build
 step. Keep to erasable syntax (no enums, namespaces or parameter properties) and import with `.ts`
 extensions; `tsc` enforces both. ts-node does not work with TypeScript 7 (no JavaScript compiler API).
 
-`src/codec.ts` is a port of the original `filter_tool.py`. Before that file was removed, both tools
-were checked to give byte-identical output on both filters, an editor-compiled filter, and error cases.
+| Path | What it is |
+|---|---|
+| `src/codec.ts` | Import string ↔ filter JSON (protobuf wire format via @bufbuild/protobuf) |
+| `src/compiler.ts` | Slot model → filter JSON |
+| `src/importer.ts` | Filter JSON → slot model, with warnings and a round-trip diff |
+| `src/mapping.ts` | Types and loader for `data/mapping.json` |
+| `server.ts` | Local server: static `web/` plus a small JSON API |
+| `web/` | The UI (plain JS) |
+| `tools/filter_tool.ts` | Command-line codec |
+| `tools/build_mapping.ts` | Builds `data/mapping.json` from a d4data checkout |
+
+The TypeScript code is a port of the earlier Python. Before the Python was removed, both were checked
+to give the same output: byte-identical import strings, the same `mapping.json`, and the same models,
+warnings, diffs and compiled filters for both working filters.
+
+## Goal: run in the browser
+
+The editor should run completely in the browser where possible: open a page, edit, compile, copy,
+with no local server. Building `data/mapping.json` from d4data stays an offline step (it is roughly a
+one-off per season). Current blockers:
+
+- `src/codec.ts` uses Node's `Buffer` for hex in unknown fields. Replace with a browser-safe helper.
+- `src/mapping.ts` reads the file with `fs`. In the browser, `fetch` it instead.
+- The UI calls `server.ts` for import, compile and the filter list. Call `src/` directly instead, and
+  load filters by paste or file picker.
+- Browsers do not run `.ts` and cannot resolve the npm import `@bufbuild/protobuf/wire`. This needs a
+  bundle step (e.g. esbuild) or an import map with prebuilt JS.
+
+Keep `src/` free of new Node-only APIs so it can move to the browser.
 
 ## ID source (verified)
 Filter IDs are d4data SNO IDs: all 53 IDs in `strict_warlock_bs` resolve (affix group 104, item 73,

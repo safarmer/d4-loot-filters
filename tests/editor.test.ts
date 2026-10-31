@@ -1,0 +1,59 @@
+// Run: npm test
+// Slot model: mapping coverage, import -> compile round trip, tier order, valid stats per slot.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { decode, encode } from "../src/codec.ts";
+import { compileModel, defaultModel, validAffixes } from "../src/compiler.ts";
+import { roundtrip } from "../src/importer.ts";
+import { mapping } from "../src/mapping.ts";
+
+const LF = join(import.meta.dirname, "..", "..", "Loot Filters");
+const load = (f: string) => decode(readFileSync(join(LF, f + ".txt"), "utf8"));
+const FILTERS = ["strict_warlock_bs", "roa_very_strict_rogue"];
+
+test("every filter id resolves in the mapping", () => {
+  const m = mapping();
+  const pools: Record<number, object> = { 5: m.item_types, 6: m.affixes, 8: m.uniques };
+  for (const f of FILTERS)
+    for (const r of load(f).rules)
+      for (const c of r.conditions)
+        for (const i of c.ids ?? [])
+          if (pools[c.type as number]) assert.ok(String(i) in pools[c.type as number], `${f}: ${i}`);
+});
+
+test("import then compile encodes, No Ma'am last", () => {
+  for (const f of FILTERS) {
+    const out = compileModel(roundtrip(load(f)).model);
+    assert.equal(out.rules.at(-1)!.name, "No Ma'am");
+    encode(out);
+  }
+});
+
+test("warlock: only the rules split per slot differ", () => {
+  const { diffs } = roundtrip(load("strict_warlock_bs"));
+  assert.deepEqual(new Set(diffs.filter((d) => d.startsWith("lost"))),
+    new Set(["lost or changed: Weapon Good GA Uni", "lost or changed: Jewelry Good GA Uni"]));
+});
+
+test("rogue: round trip keeps every rule", () => {
+  assert.deepEqual(roundtrip(load("roa_very_strict_rogue")).diffs, []);
+});
+
+test("rules come out in tier order", () => {
+  const m = defaultModel("warlock");
+  Object.assign(m.slots.boots, { enabled: true, tier: 2, legendaries: true });
+  Object.assign(m.slots.helm, { enabled: true, tier: 1, legendaries: true });
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Leg", "Boots Leg", "No Ma'am"]);
+});
+
+test("valid stats depend on the slot", () => {
+  const helm = new Set(validAffixes("helm", "warlock")), boots = new Set(validAffixes("boots", "warlock"));
+  assert.ok([...helm].some((a) => !boots.has(a)) && [...boots].some((a) => !helm.has(a)));
+  assert.ok(helm.has(1829592)); // S04_Life, from the working filter
+});
+
+test("unverified class id refuses to compile", () => {
+  assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
+});

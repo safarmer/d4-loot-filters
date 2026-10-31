@@ -7,8 +7,10 @@
   },
   "scripts": {
     "filter": "node tools/filter_tool.ts",
-    "test": "node --test tests/codec.test.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "build-mapping": "node tools/build_mapping.ts",
+    "start": "node server.ts"
   },
   "author": "",
   "license": "ISC",
