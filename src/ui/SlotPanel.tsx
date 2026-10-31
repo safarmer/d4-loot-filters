@@ -1,27 +1,38 @@
 import { useMemo, useState } from "react";
-import { validAffixes, type Model, type SlotConfig } from "../compiler.ts";
+import { LEVELS, PROFILES, validAffixes, type LevelName, type Model, type ProfileName, type SlotConfig } from "../compiler.ts";
 import { mapping, STAT_GROUPS } from "../mapping.ts";
 import type { Update } from "./App.tsx";
 import { css, slotColor } from "./colors.ts";
 
-type StatState = "" | "des" | "ga" | "req";
-const STATES: [StatState, string][] = [["", "—"], ["des", "desired"], ["ga", "GA wanted"], ["req", "required"]];
+const PROFILE_LABEL: Record<ProfileName, string> = { starter: "Starter", endgame: "End-game" };
+const LEVEL_LABEL: Record<LevelName, string> = { recolour: "Recolour (much better)", show: "Show (OK or a bit better)" };
+const range = (n: number) => Array.from({ length: n + 1 }, (_, i) => i);
 
-function statState(s: SlotConfig, id: number): StatState {
-  return s.required.includes(id) ? "req" : s.ga_wanted.includes(id) ? "ga" : s.desired.affixes.includes(id) ? "des" : "";
+/** Desired checkbox. Clearing it also clears the GA star. */
+function setDesired(s: SlotConfig, id: number, on: boolean) {
+  s.desired = s.desired.filter((x) => x !== id);
+  if (on) s.desired.push(id);
+  else s.ga_wanted = s.ga_wanted.filter((x) => x !== id);
 }
 
-function setStat(s: SlotConfig, id: number, v: StatState) {
-  s.required = s.required.filter((x) => x !== id);
+/** GA star. Starring a stat also makes it desired. */
+function setGa(s: SlotConfig, id: number, on: boolean) {
   s.ga_wanted = s.ga_wanted.filter((x) => x !== id);
-  s.desired.affixes = s.desired.affixes.filter((x) => x !== id);
-  if (v === "req") s.required.push(id);
-  if (v === "des" || v === "ga") s.desired.affixes.push(id);
-  if (v === "ga") s.ga_wanted.push(id);
-  if ((v === "des" || v === "ga") && s.desired.n === 0) s.desired.n = 1;
+  if (on) {
+    s.ga_wanted.push(id);
+    if (!s.desired.includes(id)) s.desired.push(id);
+  }
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v || 0));
+/** Greater affix mark: a four-point star, filled when on. Drawn here, not copied from the game. */
+function GaStar({ on }: { on: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="M8 0.8 L9.9 6.1 L15.2 8 L9.9 9.9 L8 15.2 L6.1 9.9 L0.8 8 L6.1 6.1 Z"
+        fill={on ? "var(--ga)" : "none"} stroke={on ? "var(--ga)" : "var(--mut)"} strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  );
+}
 const has = (name: string, q: string) => name.toLowerCase().includes(q.toLowerCase());
 
 export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: Model; update: Update }) {
@@ -51,7 +62,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
 
   const valid = useMemo(() => new Set(validAffixes(slotKey, cls)), [slotKey, cls]);
   const stats = useMemo(() => {
-    const ids = [...new Set([...valid, ...s.required, ...s.desired.affixes])];
+    const ids = [...new Set([...valid, ...s.required, ...s.desired])];
     // several affixes share a label (e.g. pre-season-4 and S04_ versions): show the internal name too
     const count = new Map<string, number>();
     for (const id of ids) { const l = m.affixes[id]?.label; if (l) count.set(l, (count.get(l) ?? 0) + 1); }
@@ -60,7 +71,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
       const name = !a ? `unverified ${id}` : count.get(a.label)! > 1 ? `${a.label} (${a.name})` : a.label;
       return { id, name, ok: valid.has(id), group: a?.group ?? "Other" };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [valid, s.required, s.desired.affixes]);
+  }, [valid, s.required, s.desired]);
 
   // one list, a header per stat group (STAT_GROUPS order), empty groups left out
   const shownStats = stats.filter((a) => has(a.name, aq));
@@ -79,13 +90,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          <label>Mode{" "}
-            <select value={s.vis} onChange={(e) => edit((d) => { d.vis = +e.target.value; })}>
-              <option value={2}>recolour</option>
-              <option value={0}>show</option>
-            </select>
-          </label>
-          <label>Colour{" "}
+          <label>Recolour{" "}
             <input type="color" value={css(slotColor(s))}
               onChange={(e) => edit((d) => { d.color = "0xFF" + e.target.value.slice(1).toUpperCase(); })} />
           </label>
@@ -97,12 +102,54 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
         <legend>Gear</legend>
         <div className="row">
           <label><input type="checkbox" checked={s.legendaries} onChange={(e) => edit((d) => { d.legendaries = e.target.checked; })} /> Legendaries count</label>
-          <label><input type="checkbox" checked={s.ancestral} onChange={(e) => edit((d) => { d.ancestral = e.target.checked; })} /> Ancestral only</label>
-          <label>Min greater affixes{" "}
-            <input type="number" min={0} max={4} style={{ width: "4.5em" }} value={s.ga_min}
-              onChange={(e) => edit((d) => { d.ga_min = clamp(+e.target.value, 0, 4); })} />
-          </label>
         </div>
+        <table className="profiles">
+          <thead>
+            <tr><th>Filter</th><th>Level</th><th>Use</th><th>Desired stats</th><th>Greater affixes</th></tr>
+          </thead>
+          {PROFILES.map((p) => (
+            <tbody key={p}>
+              {LEVELS.map((lv, i) => {
+                const name = `${PROFILE_LABEL[p]} ${lv}`;
+                const L = s[p][lv];
+                return (
+                  <tr key={lv} className={L.on ? "" : "off"}>
+                    {i === 0 && (
+                      <th scope="rowgroup" rowSpan={LEVELS.length}>
+                        {PROFILE_LABEL[p]}
+                        <label className="anc">
+                          <input type="checkbox" checked={s[p].ancestral}
+                            onChange={(e) => edit((d) => { d[p].ancestral = e.target.checked; })} /> ancestral only
+                        </label>
+                      </th>
+                    )}
+                    <td>{LEVEL_LABEL[lv]}</td>
+                    <td>
+                      <input type="checkbox" aria-label={`${name}: use`} checked={L.on}
+                        onChange={(e) => edit((d) => { d[p][lv].on = e.target.checked; })} />
+                    </td>
+                    <td>
+                      <select aria-label={`${name}: desired stats needed`} value={L.n} disabled={!L.on}
+                        onChange={(e) => edit((d) => { d[p][lv].n = +e.target.value; })}>
+                        {range(6).map((n) => <option key={n} value={n}>{n === 0 ? "any" : n}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <select aria-label={`${name}: greater affixes needed`} value={L.ga} disabled={!L.on}
+                        onChange={(e) => edit((d) => { d[p][lv].ga = +e.target.value; })}>
+                        {range(4).map((n) => <option key={n} value={n}>{n === 0 ? "any" : n}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          ))}
+        </table>
+        <small>
+          Desired counts the ticked stats. Starred stats must be the greater affix when a level needs any.
+          Recolour is checked first, so set it stricter than show.
+        </small>
       </fieldset>
 
       <div className="pair">
@@ -124,12 +171,13 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
       <fieldset>
         <legend>Stats (valid for this slot and class only)</legend>
         <div className="row">
-          <label>Desired: need at least{" "}
-            <input type="number" min={0} max={6} style={{ width: "4.5em" }} value={s.desired.n}
-              onChange={(e) => edit((d) => { d.desired.n = clamp(+e.target.value, 0, 6); })} />
-            {" "}of the desired/GA stats
-          </label>
-          <small>{s.required.length} required</small>
+          <small>{s.desired.length} desired · {s.ga_wanted.length} starred</small>
+          {s.required.length > 0 && (
+            <small>
+              {s.required.length} required by the imported filter{" "}
+              <button onClick={() => edit((d) => { d.required = []; })}>clear</button>
+            </small>
+          )}
         </div>
         <input placeholder="filter stats…" size={20} value={aq} onChange={(e) => setAq(e.target.value)} />
         <div className="list">
@@ -138,10 +186,16 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
               <div className="group-head">{group} <small>{list.length}</small></div>
               {list.map((a) => (
                 <div key={a.id} className="affix" title={a.ok ? "" : "not valid for this slot"}>
-                  <span className="nm">{a.name}{a.ok ? "" : " (invalid)"}</span>
-                  <select value={statState(s, a.id)} onChange={(e) => edit((d) => setStat(d, a.id, e.target.value as StatState))}>
-                    {STATES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
-                  </select>
+                  <label className="nm">
+                    <input type="checkbox" checked={s.desired.includes(a.id)}
+                      onChange={(e) => edit((d) => setDesired(d, a.id, e.target.checked))} />
+                    {" "}{a.name}{a.ok ? "" : " (invalid)"}{s.required.includes(a.id) ? " · required" : ""}
+                  </label>
+                  <button className="star" aria-pressed={s.ga_wanted.includes(a.id)}
+                    title="Greater affix wanted on this stat" aria-label={`Greater affix wanted: ${a.name}`}
+                    onClick={() => edit((d) => setGa(d, a.id, !d.ga_wanted.includes(a.id)))}>
+                    <GaStar on={s.ga_wanted.includes(a.id)} />
+                  </button>
                 </div>
               ))}
             </div>

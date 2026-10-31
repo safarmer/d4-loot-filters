@@ -18,7 +18,7 @@ export function Side({ model, notes, update }: { model: Model; notes: string[]; 
         {rows.map(([t, n, c], i) => (
           <li key={i}><span className="sw" style={{ background: css(c) }} />{n} <small>(tier {t})</small></li>
         ))}
-        <li>No Ma'am (hide all)</li>
+        <li>No Ma'am (hide all): {[model.hide_rest.starter && "starter", model.hide_rest.endgame && "end-game"].filter(Boolean).join(", ") || "off"}</li>
       </ol>
       <h2>Kept as-is <small>(rules the slot model cannot express)</small></h2>
       <ul>

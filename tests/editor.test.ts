@@ -48,7 +48,7 @@ test("rules come out in tier order", () => {
   const m = defaultModel("warlock");
   Object.assign(m.slots.boots, { enabled: true, tier: 2, legendaries: true });
   Object.assign(m.slots.helm, { enabled: true, tier: 1, legendaries: true });
-  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Leg", "Boots Leg", "No Ma'am"]);
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Leg", "Helm Leg OK", "Boots Leg", "Boots Leg OK", "No Ma'am"]);
 });
 
 test("valid stats depend on the slot", () => {
@@ -101,6 +101,32 @@ test("every shown stat has a known group", () => {
   assert.equal(m.affixes[1829598].group, "Mobility"); // S04_Movement_Speed
   assert.equal(m.affixes[2534726].group, "Skill ranks"); // X2_SkillRankBonus_Warlock_Core_BlazingScream
   assert.equal(m.affixes[1829614].group, "Resistances"); // S04_Resistance_Single_Fire
+});
+
+test("starter and end-game filters from one model", () => {
+  const m = defaultModel("warlock", "Warlock");
+  Object.assign(m.slots.helm, { enabled: true, uniques: [2647147], desired: [1829592, 1829586, 1829574], ga_wanted: [1829586] });
+  const starter = compileModel(m, "starter"), endgame = compileModel(m, "endgame");
+  assert.equal(starter.name, "Warlock Starter");
+  assert.equal(endgame.name, "Warlock");
+  // recolour (stricter) before show; starter keeps the rest visible, end-game hides it
+  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0]]);
+  assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["No Ma'am", 3]]);
+  const cond = (f: typeof starter, i: number, t: number) => f.rules[i].conditions.find((c) => c.type === t);
+  // starter show: 1 desired stat, no GA, not ancestral, no GA-on-stat
+  assert.equal(cond(starter, 1, 6)!.value, 1);
+  assert.equal(cond(starter, 1, 4), undefined);
+  assert.equal(cond(starter, 1, 2), undefined);
+  assert.equal(cond(starter, 1, 6)!.ga_required_on, undefined);
+  // end-game recolour: 3 desired, 2 GA, ancestral, starred stat must be the GA
+  assert.equal(cond(endgame, 0, 6)!.value, 3);
+  assert.equal(cond(endgame, 0, 4)!.value, 2);
+  assert.equal(cond(endgame, 0, 2)!.value, 4);
+  assert.deepEqual(cond(endgame, 0, 6)!.ga_required_on, [[1829586, 1829586]]);
+  for (const f of [starter, endgame]) encode(f);
+  // a level can be switched off
+  m.slots.helm.starter.show.on = false;
+  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni"]);
 });
 
 test("unverified class id refuses to compile", () => {

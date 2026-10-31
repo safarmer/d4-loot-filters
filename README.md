@@ -1,8 +1,20 @@
 # D4 Slot Editor
 
-Character-sheet loot filter editor. Pick a class, click a paper-doll slot, set uniques, legendaries,
-stats (desired N-of, GA wanted, required) and a priority tier. Compile writes rules in tier order with
-`No Ma'am` last, encodes through `src/codec.ts` (round-trip checked) and copies the string.
+Character-sheet loot filter editor. Pick a class, click a paper-doll slot, pick uniques, legendaries
+and stats (tick = desired, star = greater affix wanted on that stat) and a priority tier.
+
+One model exports two filters; import both into the game and switch between them:
+
+| Filter | Default | Per slot, two levels (recolour is checked first) |
+|---|---|---|
+| Starter | shows everything else | recolour: 2 desired, 1 GA · show: 1 desired, any GA · not ancestral |
+| End-game (`Strict…` name) | ends with `No Ma'am` | recolour: 3 desired, 2 GA · show: 2 desired, 1 GA · ancestral only |
+
+Recolour is for "likely much better", show for "OK or a bit better". Each level can be switched off,
+and its desired-stat and GA counts set per slot. A starred stat must be the greater affix when the
+level needs any GA (`ga_required_on`). Export encodes through `src/codec.ts` (round-trip checked) and
+copies the string. Imports fill the end-game profile: a recolour rule sets the recolour level, a show
+rule the show level.
 
 Runs completely in the browser: Vite + React 19 + Immer, all TypeScript. The only offline step is
 building the mapping in `data/` from d4data (roughly once per season).
@@ -103,5 +115,7 @@ from the data; drop tables did not help (d4data's reference index links no gear 
 ## Unverified
 - Filter `class_id` is known only for warlock (6) and rogue (7). Other classes cannot compile.
 - More than one affix (type 6) condition per rule (used for "required") is not in any real filter yet. Test in game.
-- `ga_wanted` is written as `ga_required_on` pairs `[id, id]`, as in the Rogue filter. Their exact semantics are unverified.
+- Starred stats are written as `ga_required_on` pairs `[id, id]`, as in the Rogue filter. Their exact in-game meaning is unverified.
+- Both filters use `slot_idx` 1. Whether the game needs different values to hold both at once is unverified.
+- The star is drawn by the editor, not the game's greater affix icon (that would need extracting game textures).
 - Display names exist for items only; affix names are prettified internal names.

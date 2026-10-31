@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { produce } from "immer";
 import { decode, encode } from "../codec.ts";
-import { compileModel, defaultModel, type Model } from "../compiler.ts";
+import { compileModel, defaultModel, PROFILES, type Model, type ProfileName } from "../compiler.ts";
 import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
 import { Doll } from "./Doll.tsx";
@@ -37,16 +37,17 @@ export function App() {
     }
   }
 
-  async function compile() {
+  async function compile(profile: ProfileName) {
     try {
-      const doc = compileModel(model);
+      const doc = compileModel(model, profile);
       const text = encode(doc); // throws if the round trip fails
+      const what = `${doc.name}: ${doc.rules.length} rules, round-trip OK`;
       try {
         await navigator.clipboard.writeText(text);
-        setStatus({ msg: `${doc.rules.length} rules, round-trip OK, copied to clipboard` });
+        setStatus({ msg: `${what}, copied to clipboard` });
       } catch {
-        window.prompt("Copy the import string:", text);
-        setStatus({ msg: `${doc.rules.length} rules, round-trip OK` });
+        window.prompt(`Copy the import string for ${doc.name}:`, text);
+        setStatus({ msg: what });
       }
     } catch (e) {
       setStatus({ msg: (e as Error).message, bad: true });
@@ -80,7 +81,15 @@ export function App() {
           }} />
         </label>
         <button onClick={() => { setModel(defaultModel(model.class, model.name)); setNotes([]); }}>New</button>
-        <button className="primary" onClick={compile}>Compile &amp; copy</button>
+        {PROFILES.map((p) => (
+          <span key={p} className="export">
+            <button className="primary" onClick={() => compile(p)}>Copy {p === "starter" ? "starter" : "end-game"}</button>
+            <label title="End the filter with No Ma'am, which hides everything the rules above do not match">
+              <input type="checkbox" checked={model.hide_rest[p]}
+                onChange={(e) => update((d) => { d.hide_rest[p] = e.target.checked; })} /> hide the rest
+            </label>
+          </span>
+        ))}
         <span id="status" className={status.bad ? "err" : "ok"}>{status.msg}</span>
       </header>
       {paste !== null && (
