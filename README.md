@@ -127,6 +127,12 @@ One record per line, keys in numeric order, so a game update shows up as a diff 
 records only. Loaders join the files with `assembleMapping()` in `src/mapping.ts`.
 Valid stats per slot = affix `arAllowedItemLabels` ∩ item type `arItemLabels`, filtered by class.
 
+## Unique hover card
+Hovering (or focusing) a unique in a pick list shows its power, fixed stats and flavour text. The
+mapping keeps these for shown uniques: power from the unique affix's `Desc` string, cleaned to plain
+text (the non-mythic wording; value slots as `#` or `#%`, since the numbers roll on the item),
+fixed stats from the item's other forced affixes, flavour from the item's `Flavor` string.
+
 ## Import
 Imports are an improved presentation, not the source of truth (the saved filter never changes), so
 rules are cleaned to fit where the intent is clear, each with an import note:

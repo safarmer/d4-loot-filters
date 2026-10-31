@@ -11,6 +11,11 @@ export interface UniqueDef {
   classes: string[]; season_item: boolean; mythic: boolean;
   /** Why pickers hide this item (placeholder, past-season copy). Absent = shown. */
   hidden?: string;
+  /** Unique power, plain text; value slots shown as "#" (numbers are not in the game files' text). */
+  power?: string;
+  flavor?: string;
+  /** Fixed stats (forced affixes other than the power), as readable names. */
+  stats?: string[];
 }
 export interface AffixDef {
   name: string; label: string; labels: number[]; classes: string[];

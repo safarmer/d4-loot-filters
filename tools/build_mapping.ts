@@ -107,10 +107,26 @@ function pretty(name: string): string {
     .replace(/(?<=[a-z])(?=[A-Z])/g, " ").trim();
 }
 
-function display(stringsDir: string, prefix: string, name: string): string | null {
+function display(stringsDir: string, prefix: string, name: string, label = "Name"): string | null {
   const p = join(stringsDir, `${prefix}_${name}.stl.json`);
   if (!existsSync(p)) return null;
-  return load(p).arStrings.find((e: any) => e.szLabel === "Name")?.szText ?? null;
+  return load(p).arStrings.find((e: any) => e.szLabel === label)?.szText ?? null;
+}
+
+/**
+ * Game text markup to plain text: {if:...}a{else}b{/if} keeps b (the non-mythic wording), other
+ * {if} blocks drop, colour/underline tags drop, value slots [expr|fmt|] become "#" or "#%".
+ */
+function plain(text: string | null): string | undefined {
+  if (!text) return undefined;
+  const out = text
+    .replace(/\{if:[^}]*\}((?:(?!\{if:)[\s\S])*?)\{else\}([\s\S]*?)\{\/if\}/g, "$2")
+    .replace(/\{if:[^}]*\}[\s\S]*?\{\/if\}/g, "")
+    .replace(/\[[^\]|]*\|([^|\]]*)\|?[^\]]*\]/g, (_, fmt: string) => (fmt.includes("%") ? "#%" : "#"))
+    .replace(/\[[^\]]*\]/g, "#")
+    .replace(/\{[^}]*\}/g, "")
+    .replace(/\s+/g, " ").trim();
+  return out || undefined;
 }
 
 function sortKeys(x: unknown): unknown {
@@ -163,6 +179,26 @@ for (const [n, i] of itypes)
   if (typeSlot.has(i.__snoID__) || n === "Charm" || n === "HoradricSeal")
     itemTypes[i.__snoID__] = { name: n, slot: typeSlot.get(i.__snoID__) ?? null, classes: classes(i.fUsableByClass) };
 
+/** Power text, flavour and fixed stats of a shown unique (the first forced affix is its power). */
+function uniqueText(name: string, d: any): Pick<UniqueDef, "power" | "flavor" | "stats"> {
+  const forced: any[] = d.arForcedAffixes ?? [];
+  const power = forced.find((a) => a?.name === name) ?? forced[0];
+  const out: Pick<UniqueDef, "power" | "flavor" | "stats"> = {};
+  const p = power && plain(display(strings, "Affix", power.name, "Desc"));
+  if (p) out.power = p;
+  const f = plain(display(strings, "Item", name, "Flavor"));
+  if (f) out.flavor = f;
+  // stat names: drop UNIQUE/UBERUNIQUE prefixes; mythic (UBERUNIQUE_) stats also end in an item
+  // name, e.g. UBERUNIQUE_CooldownReductionCDR_HarlequinCrest, which is dropped too
+  const stats = forced.filter((a) => a && a !== power).map((a) => {
+    const n = String(a.name);
+    const base = n.startsWith("UBERUNIQUE_") ? n.slice(11).replace(/_[^_]+$/, "") : n.replace(/^UNIQUE_(INHERENT_)?/, "");
+    return pretty(base);
+  });
+  if (stats.length) out.stats = stats;
+  return out;
+}
+
 const uniques: Record<string, UniqueDef> = {};
 for (const [name, p] of files(join(meta, "Item"), ".itm.json", "_Unique_")) {
   const d = load(p);
@@ -178,6 +214,7 @@ for (const [name, p] of files(join(meta, "Item"), ".itm.json", "_Unique_")) {
     classes: classes(d.fUsableByClass), season_item: Boolean(d.bSeasonItem),
     mythic: d.eMagicType === MYTHIC || d.eForcedItemQualityModifier === MYTHIC_COPY,
     ...(hidden ? { hidden } : {}),
+    ...(hidden ? {} : uniqueText(name, d)),
   };
 }
 

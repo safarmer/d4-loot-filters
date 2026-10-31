@@ -3,6 +3,7 @@ import { classSets, classUniqueCharms, MAX_UNIQUES, validCharmAffixes, type Char
 import { mapping } from "../mapping.ts";
 import type { Update } from "./App.tsx";
 import { StatList } from "./StatList.tsx";
+import { UniqueRow } from "./UniqueRow.tsx";
 
 const range = (n: number) => Array.from({ length: n + 1 }, (_, i) => i);
 const has = (name: string, q: string) => name.toLowerCase().includes(q.toLowerCase());
@@ -59,14 +60,9 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
           <input placeholder="filter…" size={12} value={uq} onChange={(e) => setUq(e.target.value)} />
           <div className="list">
             {uniques.filter((u) => has(u.name, uq)).map((u) => (
-              <label key={u.id}>
-                <input type="checkbox" checked={c.uniques.includes(u.id)}
-                  disabled={!c.uniques.includes(u.id) && c.uniques.length >= MAX_UNIQUES}
-                  onChange={(e) => edit((d) => {
-                    d.uniques = e.target.checked ? [...d.uniques, u.id] : d.uniques.filter((x) => x !== u.id);
-                  })} />
-                {u.name}
-              </label>
+              <UniqueRow key={u.id} id={u.id} name={u.name} checked={c.uniques.includes(u.id)}
+                disabled={!c.uniques.includes(u.id) && c.uniques.length >= MAX_UNIQUES}
+                onChange={(on) => edit((d) => { d.uniques = on ? [...d.uniques, u.id] : d.uniques.filter((x) => x !== u.id); })} />
             ))}
           </div>
         </fieldset>
