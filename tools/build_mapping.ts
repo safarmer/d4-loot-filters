@@ -1,6 +1,6 @@
-// Build data/mapping.json from a d4data checkout (files only).
+// Build the mapping (data/meta.json, uniques.json, affixes.json) from a d4data checkout (files only).
 //
-// Usage: npm run build-mapping -- <d4data/json dir> [out.json]
+// Usage: npm run build-mapping -- <d4data/json dir> [out dir]
 //
 // Reads, from <json dir>:
 //   base/meta/ItemType/*.itt.json   slot -> item type id, item labels
@@ -8,10 +8,11 @@
 //   base/meta/Affix/*.aff.json      affix labels (which slots it can roll on), classes
 //   enUS_Text/meta/StringList/      display names
 // Source: https://github.com/DiabloTools/d4data (extracted game files). Never game memory or network.
+import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import type { AffixDef, ItemTypeDef, Mapping, SlotDef, UniqueDef } from "../src/mapping.ts";
-import { MAPPING_PATH } from "./node_mapping.ts";
+import { join } from "path";
+import { MAPPING_FILES, type AffixDef, type ItemTypeDef, type MappingMeta, type SlotDef, type UniqueDef } from "../src/mapping.ts";
+import { DATA_DIR } from "./node_mapping.ts";
 
 // d4data class order (index of fUsableByClass / fAllowedForPlayerClass). Checked against item
 // types: Bow->rogue(3), Scythe->necromancer(4), Glaive->spiritborn(5), Focus->sorc/necro/warlock.
@@ -76,9 +77,23 @@ function sortKeys(x: unknown): unknown {
   return x;
 }
 
-const [root, out = MAPPING_PATH] = process.argv.slice(2);
+/** One record per line, keys in numeric order: small diffs when the game data changes. */
+function perLine(records: Record<string, unknown>): string {
+  const keys = Object.keys(records).sort((a, b) => Number(a) - Number(b));
+  return "{\n" + keys.map((k) => `${JSON.stringify(k)}: ${JSON.stringify(sortKeys(records[k]))}`).join(",\n") + "\n}\n";
+}
+
+function gitCommit(dir: string): string | undefined {
+  try {
+    return execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+const [root, out = DATA_DIR] = process.argv.slice(2);
 if (!root) {
-  console.error("usage: npm run build-mapping -- <d4data/json dir> [out.json]");
+  console.error("usage: npm run build-mapping -- <d4data/json dir> [out dir]");
   process.exit(1);
 }
 const meta = join(root, "base", "meta");
@@ -131,11 +146,14 @@ for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
   };
 }
 
-const result: Mapping = {
+const mappingMeta: MappingMeta = {
   source: "DiabloTools/d4data json (files only)",
-  classes: CLASSES, filter_class_id: FILTER_CLASS_ID, slots, item_types: itemTypes, uniques, affixes,
+  ...(gitCommit(root) ? { source_commit: gitCommit(root) } : {}),
+  classes: CLASSES, filter_class_id: FILTER_CLASS_ID, slots, item_types: itemTypes,
   charm_type: CHARM_TYPE, seal_type: SEAL_TYPE,
 };
-mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, JSON.stringify(sortKeys(result)));
+mkdirSync(out, { recursive: true });
+writeFileSync(join(out, MAPPING_FILES.meta), JSON.stringify(sortKeys(mappingMeta), null, 2) + "\n");
+writeFileSync(join(out, MAPPING_FILES.uniques), perLine(uniques));
+writeFileSync(join(out, MAPPING_FILES.affixes), perLine(affixes));
 console.log(`slots ${Object.keys(slots).length}  item_types ${Object.keys(itemTypes).length}  uniques ${Object.keys(uniques).length}  affixes ${Object.keys(affixes).length} -> ${out}`);

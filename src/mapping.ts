@@ -1,5 +1,8 @@
-// data/mapping.json: d4data SNO IDs -> names, slots, classes. Built by tools/build_mapping.ts.
-// Browser-safe: the caller loads the JSON (fetch, import or fs) and passes it to setMapping().
+// The mapping: d4data SNO IDs -> names, slots, classes. Built by tools/build_mapping.ts into data/:
+//   meta.json      classes, slots, item types, class ids (small, hand-readable)
+//   uniques.json   unique items, one per line
+//   affixes.json   affixes, one per line
+// Browser-safe: the caller loads the files (fetch, import or fs) and passes them to assembleMapping().
 
 export interface SlotDef { label: string; item_types: number[]; labels: number[] }
 export interface ItemTypeDef { name: string; slot: string | null; classes: string[] }
@@ -15,6 +18,8 @@ export interface AffixDef {
 }
 export interface Mapping {
   source: string;
+  /** d4data git commit the mapping was built from, when known. */
+  source_commit?: string;
   classes: string[];
   filter_class_id: Record<string, number>;
   slots: Record<string, SlotDef>;
@@ -23,6 +28,13 @@ export interface Mapping {
   affixes: Record<string, AffixDef>;
   charm_type: number;
   seal_type: number;
+}
+
+export type MappingMeta = Omit<Mapping, "uniques" | "affixes">;
+export const MAPPING_FILES = { meta: "meta.json", uniques: "uniques.json", affixes: "affixes.json" } as const;
+
+export function assembleMapping(meta: MappingMeta, uniques: Mapping["uniques"], affixes: Mapping["affixes"]): Mapping {
+  return { ...meta, uniques, affixes };
 }
 
 let current: Mapping | null = null;

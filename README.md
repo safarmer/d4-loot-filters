@@ -5,7 +5,7 @@ stats (desired N-of, GA wanted, required) and a priority tier. Compile writes ru
 `No Ma'am` last, encodes through `src/codec.ts` (round-trip checked) and copies the string.
 
 Runs completely in the browser: Vite + React 19 + Immer, all TypeScript. The only offline step is
-building `data/mapping.json` from d4data (roughly once per season).
+building the mapping in `data/` from d4data (roughly once per season).
 
 ```
 npm install
@@ -15,7 +15,7 @@ npm run preview             # serve dist/ to check the build
 npm test                    # Vitest: codec golden tests + slot model tests
 npm run typecheck           # tsc (TypeScript 7, checks .ts and .tsx)
 npm run filter -- check|decode|encode <in> [out]   # command-line codec (Node)
-npm run build-mapping -- <d4data>/json             # offline: rebuild data/mapping.json (Node)
+npm run build-mapping -- <d4data>/json             # offline: rebuild data/*.json (Node)
 ```
 
 `dist/` needs a static host (any web server, or `npm run preview`). Browsers do not load module
@@ -31,9 +31,9 @@ erasable syntax (no enums, namespaces or parameter properties) and import with `
 | `src/compiler.ts` | Slot model → filter JSON |
 | `src/importer.ts` | Filter JSON → slot model, with warnings and a round-trip diff |
 | `src/mapping.ts` | Mapping types; callers load the JSON and pass it to `setMapping()` |
-| `src/ui/` | React UI. Loads `data/mapping.json` with `fetch`; changes the model with Immer |
+| `src/ui/` | React UI. Loads the `data/` files with `fetch`; changes the model with Immer |
 | `tools/filter_tool.ts` | Command-line codec |
-| `tools/build_mapping.ts` | Builds `data/mapping.json` from a d4data checkout |
+| `tools/build_mapping.ts` | Builds the `data/` files from a d4data checkout |
 | `tools/node_mapping.ts` | Loads the mapping from disk for the tools and tests |
 
 `src/` (outside `src/ui/`) must stay free of Node-only APIs (`fs`, `path`, `Buffer`): the browser
@@ -43,12 +43,21 @@ Filters in `../Loot Filters/*.txt` are bundled into the page at build time (Load
 filter loads by paste or file picker.
 
 The TypeScript code is a port of the earlier Python. Before the Python was removed, both were checked
-to give the same output: byte-identical import strings, the same `mapping.json`, and the same models,
+to give the same output: byte-identical import strings, the same mapping, and the same models,
 warnings, diffs and compiled filters for both working filters.
 
 ## ID source (verified)
 Filter IDs are d4data SNO IDs: all 53 IDs in `strict_warlock_bs` resolve (affix group 104, item 73,
-item type 98, talisman set 109). `data/mapping.json` is built from d4data files only.
+item type 98, talisman set 109). The mapping is built from d4data files only, into three files in `data/`:
+
+| File | Holds | Size |
+|---|---|---|
+| `meta.json` | source and d4data commit, classes, filter class ids, slots, item types | 10 KB |
+| `uniques.json` | 983 unique items, one per line | 185 KB |
+| `affixes.json` | 2,618 affixes (362 rollable), one per line | 558 KB |
+
+One record per line, keys in numeric order, so a game update shows up as a diff of the changed
+records only. Loaders join the files with `assembleMapping()` in `src/mapping.ts`.
 Valid stats per slot = affix `arAllowedItemLabels` ∩ item type `arItemLabels`, filtered by class.
 
 ## Import

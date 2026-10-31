@@ -1,0 +1,581 @@
+{
+  "charm_type": 2288901,
+  "classes": [
+    "sorcerer",
+    "druid",
+    "barbarian",
+    "rogue",
+    "necromancer",
+    "spiritborn",
+    "paladin",
+    "warlock"
+  ],
+  "filter_class_id": {
+    "rogue": 7,
+    "warlock": 6
+  },
+  "item_types": {
+    "446778": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Mace",
+      "slot": "weapon"
+    },
+    "446788": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Mace2H",
+      "slot": "weapon"
+    },
+    "446794": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Mace2HDruid",
+      "slot": "weapon"
+    },
+    "446796": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Sword",
+      "slot": "weapon"
+    },
+    "446799": {
+      "classes": [
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Sword2H",
+      "slot": "weapon"
+    },
+    "446801": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Axe",
+      "slot": "weapon"
+    },
+    "446802": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Axe2H",
+      "slot": "weapon"
+    },
+    "446803": {
+      "classes": [
+        "sorcerer",
+        "druid"
+      ],
+      "name": "Staff",
+      "slot": "weapon"
+    },
+    "446804": {
+      "classes": [
+        "necromancer"
+      ],
+      "name": "Scythe",
+      "slot": "weapon"
+    },
+    "446805": {
+      "classes": [
+        "necromancer"
+      ],
+      "name": "Scythe2H",
+      "slot": "weapon"
+    },
+    "446809": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "rogue",
+        "necromancer",
+        "warlock"
+      ],
+      "name": "Dagger",
+      "slot": "weapon"
+    },
+    "446810": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "DaggerOffHand",
+      "slot": "offhand"
+    },
+    "446813": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "spiritborn"
+      ],
+      "name": "Polearm",
+      "slot": "weapon"
+    },
+    "446819": {
+      "classes": [
+        "sorcerer",
+        "necromancer"
+      ],
+      "name": "Wand",
+      "slot": "weapon"
+    },
+    "446823": {
+      "classes": [
+        "rogue"
+      ],
+      "name": "Bow",
+      "slot": "weapon"
+    },
+    "446824": {
+      "classes": [
+        "rogue"
+      ],
+      "name": "Crossbow",
+      "slot": "weapon"
+    },
+    "446825": {
+      "classes": [
+        "rogue"
+      ],
+      "name": "Crossbow2H",
+      "slot": "weapon"
+    },
+    "446826": {
+      "classes": [
+        "sorcerer",
+        "necromancer",
+        "warlock"
+      ],
+      "name": "Focus",
+      "slot": "offhand"
+    },
+    "446827": {
+      "classes": [
+        "druid"
+      ],
+      "name": "OffHandTotem",
+      "slot": "offhand"
+    },
+    "446829": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "ChestArmor",
+      "slot": "chest"
+    },
+    "446830": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Helm",
+      "slot": "helm"
+    },
+    "446831": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Legs",
+      "slot": "pants"
+    },
+    "446832": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Boots",
+      "slot": "boots"
+    },
+    "446833": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Gloves",
+      "slot": "gloves"
+    },
+    "446834": {
+      "classes": [
+        "necromancer",
+        "paladin"
+      ],
+      "name": "Shield",
+      "slot": "offhand"
+    },
+    "446836": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Ring",
+      "slot": "ring"
+    },
+    "446837": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Amulet",
+      "slot": "amulet"
+    },
+    "1041238": {
+      "classes": [
+        "sorcerer",
+        "necromancer"
+      ],
+      "name": "FocusBookOffHand",
+      "slot": "offhand"
+    },
+    "1462897": {
+      "classes": [
+        "spiritborn"
+      ],
+      "name": "Glaive",
+      "slot": "weapon"
+    },
+    "1495597": {
+      "classes": [
+        "spiritborn"
+      ],
+      "name": "Quarterstaff",
+      "slot": "weapon"
+    },
+    "1567587": {
+      "classes": [
+        "druid"
+      ],
+      "name": "StaffDruid",
+      "slot": "weapon"
+    },
+    "1567589": {
+      "classes": [
+        "sorcerer"
+      ],
+      "name": "StaffSorcerer",
+      "slot": "weapon"
+    },
+    "2105299": {
+      "classes": [],
+      "name": "Amazon_Spear",
+      "slot": "weapon"
+    },
+    "2105304": {
+      "classes": [
+        "necromancer"
+      ],
+      "name": "Amazon_Shield",
+      "slot": "offhand"
+    },
+    "2148778": {
+      "classes": [
+        "necromancer"
+      ],
+      "name": "ShieldHTH",
+      "slot": "offhand"
+    },
+    "2288901": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Charm",
+      "slot": null
+    },
+    "2312856": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Flail",
+      "slot": "weapon"
+    },
+    "2326144": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "name": "HoradricSeal",
+      "slot": null
+    },
+    "2676430": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Sword_Phase_Blade",
+      "slot": "weapon"
+    },
+    "2686551": {
+      "classes": [
+        "druid",
+        "barbarian",
+        "necromancer",
+        "paladin",
+        "warlock"
+      ],
+      "name": "Axe_Berserker_Axe",
+      "slot": "weapon"
+    }
+  },
+  "seal_type": 2326144,
+  "slots": {
+    "amulet": {
+      "item_types": [
+        446837
+      ],
+      "label": "Amulet",
+      "labels": [
+        18,
+        26,
+        54
+      ]
+    },
+    "boots": {
+      "item_types": [
+        446832
+      ],
+      "label": "Boots",
+      "labels": [
+        14,
+        29,
+        54
+      ]
+    },
+    "chest": {
+      "item_types": [
+        446829
+      ],
+      "label": "Chest",
+      "labels": [
+        14,
+        17,
+        54
+      ]
+    },
+    "gloves": {
+      "item_types": [
+        446833
+      ],
+      "label": "Gloves",
+      "labels": [
+        14,
+        28,
+        54
+      ]
+    },
+    "helm": {
+      "item_types": [
+        446830
+      ],
+      "label": "Helm",
+      "labels": [
+        14,
+        16,
+        54
+      ]
+    },
+    "offhand": {
+      "item_types": [
+        446810,
+        446826,
+        446827,
+        446834,
+        1041238,
+        2105304,
+        2148778
+      ],
+      "label": "Offhand",
+      "labels": [
+        0,
+        4,
+        6,
+        8,
+        14,
+        15,
+        23,
+        31,
+        47,
+        54,
+        59
+      ]
+    },
+    "pants": {
+      "item_types": [
+        446831
+      ],
+      "label": "Pants",
+      "labels": [
+        14,
+        30,
+        54
+      ]
+    },
+    "ring": {
+      "item_types": [
+        446836
+      ],
+      "label": "Ring (x2)",
+      "labels": [
+        18,
+        19,
+        54
+      ]
+    },
+    "weapon": {
+      "item_types": [
+        446778,
+        446788,
+        446794,
+        446796,
+        446799,
+        446801,
+        446802,
+        446803,
+        446804,
+        446805,
+        446809,
+        446813,
+        446819,
+        446823,
+        446824,
+        446825,
+        1462897,
+        1495597,
+        1567587,
+        1567589,
+        2105299,
+        2312856,
+        2676430,
+        2686551
+      ],
+      "label": "Weapon",
+      "labels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        46,
+        54,
+        61,
+        62,
+        72
+      ]
+    }
+  },
+  "source": "DiabloTools/d4data json (files only)",
+  "source_commit": "75e619f0d90a0951945747f45feef59c076a5db0"
+}
