@@ -52,7 +52,7 @@ export function validAffixes(slotKey: string, cls: string): number[] {
   const m = mapping();
   const labels = new Set(m.slots[slotKey].labels);
   return Object.entries(m.affixes)
-    .filter(([, a]) => a.labels.some((l) => labels.has(l)) && a.classes.includes(cls) && a.rollable)
+    .filter(([, a]) => a.labels.some((l) => labels.has(l)) && a.classes.includes(cls) && a.rollable && !a.hidden)
     .map(([i]) => Number(i))
     .sort((a, b) => a - b);
 }

@@ -17,6 +17,8 @@ export interface AffixDef {
   tempered: boolean; magic_type: number;
   /** Can roll as a random stat on gear (see tools/build_mapping.ts). */
   rollable: boolean;
+  /** Why stat pickers hide this rollable affix (e.g. a past season's stat). Absent = shown. */
+  hidden?: string;
 }
 export interface Mapping {
   source: string;

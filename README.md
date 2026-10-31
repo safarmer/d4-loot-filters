@@ -54,7 +54,7 @@ item type 98, talisman set 109). The mapping is built from d4data files only, in
 |---|---|---|
 | `meta.json` | source and d4data commit, classes, filter class ids, slots, item types | 10 KB |
 | `uniques.json` | 983 unique items, one per line | 185 KB |
-| `affixes.json` | 2,618 affixes (362 rollable), one per line | 558 KB |
+| `affixes.json` | 2,618 affixes (336 shown in stat lists), one per line | 558 KB |
 
 One record per line, keys in numeric order, so a game update shows up as a diff of the changed
 records only. Loaders join the files with `assembleMapping()` in `src/mapping.ts`.
@@ -73,7 +73,12 @@ tempered, and not named `TEST_…`/`UNIQUE_…`. The flag meanings are inferred 
 keeps all 29 affix IDs the two working filters use and cuts 2,618 affixes to 362 (Warlock boots:
 163 → 37). Where labels still clash, the UI shows the internal name.
 
-Unverified: whether seasonal stats such as `S12_KillStreak_*` still roll in the current season.
+Past-season stats are hidden too (`hidden: "Season n stat"`): an `S<n>_` rollable stat with
+4 < n < `CURRENT_SEASON` and dwFlags bit `0x04` set. Today that is the 26 `S12_KillStreak_*` stats
+(Season 12's killstreak mechanic), leaving 336 stats. `S11_` stats stay: they lack bit `0x04`, match
+the `S04_` base stats in every flag, and have Warlock-licensed copies (`S11_LifeOnKill_Warlock`), so
+they were still being added after Season 11. Bit `0x04` alone is not enough: some base stats such as
+`S04_CoreStats_All` carry it.
 
 ## Unique lists
 Unique pickers show only items in the current season (`CURRENT_SEASON` in `tools/build_mapping.ts`,

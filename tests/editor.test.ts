@@ -62,11 +62,14 @@ test("stat lists hold only rollable affixes, including every affix the working f
   for (const f of FILTERS)
     for (const r of load(f).rules)
       for (const c of r.conditions)
-        if (c.type === 6) for (const i of c.ids ?? []) assert.ok(m.affixes[i].rollable, `${f}: ${m.affixes[i].name}`);
+        if (c.type === 6) for (const i of c.ids ?? [])
+          assert.ok(m.affixes[i].rollable && !m.affixes[i].hidden, `${f}: ${m.affixes[i].name}`);
   const names = validAffixes("boots", "warlock").map((i) => m.affixes[i].name);
   assert.ok(names.includes("S04_Movement_Speed"));
   for (const bad of ["Movement_Speed", "Resistance_Single_Fire"]) assert.ok(!names.includes(bad), bad);
-  assert.ok(!names.some((n) => /^(UNIQUE|TEST|Runeword|RuneWord|X2_Transfiguration)/i.test(n)), "junk affix in list");
+  assert.ok(!names.some((n) => /^(UNIQUE|TEST|Runeword|RuneWord|X2_Transfiguration|S12_KillStreak)/i.test(n)), "junk affix in list");
+  assert.ok(names.includes("S11_LifeOnKill_Warlock")); // S11 stats are current (Warlock-era copies)
+  assert.ok(validAffixes("amulet", "warlock").map((i) => m.affixes[i].name).includes("S04_CoreStats_All"));
 });
 
 test("unique pickers hold only current items, including every unique the working filters use", () => {

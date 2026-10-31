@@ -42,6 +42,10 @@ const CHARM_TYPE = 2288901, SEAL_TYPE = 2326144;
 // Affix dwFlags bits, inferred from data and checked against every affix id in the working filters:
 // 0x01 = can roll as a random stat; 0x80 = superseded copy (e.g. Movement_Speed vs S04_Movement_Speed).
 const ROLLS = 0x01, SUPERSEDED = 0x80;
+// 0x04 = restricted stat; on a season-prefixed affix it marks a seasonal mechanic's stat
+// (e.g. S12_KillStreak_*). Base stats with it (S04_CoreStats_All) stay shown.
+const RESTRICTED = 0x04;
+const BASE_STAT_SEASON = 4; // S04_ = the base stat set since the Season 4 itemization rework
 const NOT_REAL = /^(test|unique)_/i; // test and unique-only affixes that still carry the roll bit
 
 /** A random stat that can roll on gear: not a legendary power, tempered affix, unique-only or old copy. */
@@ -174,10 +178,15 @@ const affixes: Record<string, AffixDef> = {};
 for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
   const d = load(p);
   if (!d.arAllowedItemLabels.length) continue;
+  const season = seasonOf(name);
+  const rolls = rollable(name, d);
+  const hidden = rolls && season > BASE_STAT_SEASON && season < CURRENT_SEASON && (d.dwFlags & RESTRICTED) !== 0
+    ? `Season ${season} stat` : undefined;
   affixes[d.__snoID__] = {
     name, label: pretty(name), labels: [...d.arAllowedItemLabels].sort((a: number, b: number) => a - b),
     classes: classes(d.fAllowedForPlayerClass), tempered: Boolean(d.bIsTemperedAffix), magic_type: d.eMagicType,
-    rollable: rollable(name, d),
+    rollable: rolls,
+    ...(hidden ? { hidden } : {}),
   };
 }
 
