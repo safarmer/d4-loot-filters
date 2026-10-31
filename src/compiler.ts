@@ -6,11 +6,13 @@
 //   enabled, tier (lower = earlier), color (null = tier palette),
 //   uniques [ids], legendaries, leg_rarity (8),
 //   desired [affix ids], ga_wanted [affix ids, starred; also desired], required [affix ids, from imports],
-//   starter / endgame: {ancestral, recolour: Level, show: Level}
-//   Level: {on, n: desired stats needed, ga: greater affixes needed}
-// One model compiles to two filters: starter (looser, by default shows the rest) and endgame
-// (stricter, by default ends with `No Ma'am`). Per slot, the recolour level ("likely much better")
-// comes before the show level ("OK or slightly better"): first match wins. Rules come out in tier order.
+//   n: desired stats needed, ga: greater affixes needed to recolour in the end-game filter
+// One model compiles to two filters, switched in game. Per slot and item kind (uniques, legendaries):
+//   starter  recolour: n desired stats (GA and ancestral ignored)  ·  show: always
+//   endgame  recolour: ancestral + n desired + ga greater affixes (starred stats must be the GA)
+//            show:     ancestral + n desired
+// The recolour rule comes first (first match wins). With ga 0 the end-game filter has no recolour rule.
+// By default the starter shows everything else; the end-game ends with `No Ma'am`. Rules come out in tier order.
 import type { Condition, Filter, Rule } from "./codec.ts";
 import { mapping } from "./mapping.ts";
 
@@ -21,16 +23,14 @@ const HIDE_ALL: Rule = { name: "No Ma'am", vis: 3, color: "0x00000000", enabled:
 
 export type ProfileName = "starter" | "endgame";
 export const PROFILES: ProfileName[] = ["starter", "endgame"];
-export type LevelName = "recolour" | "show";
-export const LEVELS: LevelName[] = ["recolour", "show"];
-export interface Level { on: boolean; n: number; ga: number }
-export interface Profile { ancestral: boolean; recolour: Level; show: Level }
+/** Show rules carry this suffix; recolour rules use the plain slot label. */
+export const SHOW_SUFFIX = " OK";
 
 export interface SlotConfig {
   enabled: boolean; tier: number; color: string | null;
   uniques: number[]; legendaries: boolean; leg_rarity: number;
   desired: number[]; ga_wanted: number[]; required: number[];
-  starter: Profile; endgame: Profile;
+  n: number; ga: number;
 }
 export interface Model {
   name: string; class: string; slot_idx: number;
@@ -39,15 +39,10 @@ export interface Model {
   slots: Record<string, SlotConfig>;
 }
 
-export const defaultProfile = (p: ProfileName): Profile => p === "starter"
-  ? { ancestral: false, recolour: { on: true, n: 2, ga: 1 }, show: { on: true, n: 1, ga: 0 } }
-  : { ancestral: true, recolour: { on: true, n: 3, ga: 2 }, show: { on: true, n: 2, ga: 1 } };
-
 export function defaultSlot(tier = 1): SlotConfig {
   return {
     enabled: false, tier, color: null, uniques: [], legendaries: false, leg_rarity: 8,
-    desired: [], ga_wanted: [], required: [],
-    starter: defaultProfile("starter"), endgame: defaultProfile("endgame"),
+    desired: [], ga_wanted: [], required: [], n: 2, ga: 1,
   };
 }
 
@@ -74,48 +69,49 @@ export function validAffixes(slotKey: string, cls: string): number[] {
     .sort((a, b) => a - b);
 }
 
-function affixConditions(s: SlotConfig, p: Level): Condition[] {
+/** Required stats, then "n of the desired stats". With withGa, starred stats must be the greater affix. */
+function affixConditions(s: SlotConfig, withGa: boolean): Condition[] {
   const conds: Condition[] = [];
   if (s.required.length)
     conds.push({ type: 6, kind: "affixes", ids: [...s.required], value: s.required.length });
   const ids = [...s.desired];
   for (const g of s.ga_wanted) if (!ids.includes(g)) ids.push(g);
-  if (ids.length && p.n > 0) {
-    const c: Condition = { type: 6, kind: "affixes", ids, value: Math.min(p.n, ids.length) };
-    // starred stats ask for the greater affix on that stat; only when this profile wants GAs
-    if (s.ga_wanted.length && p.ga > 0) c.ga_required_on = s.ga_wanted.map((g) => [g, g]);
+  if (ids.length && s.n > 0) {
+    const c: Condition = { type: 6, kind: "affixes", ids, value: Math.min(s.n, ids.length) };
+    if (withGa && s.ga_wanted.length) c.ga_required_on = s.ga_wanted.map((g) => [g, g]);
     conds.push(c);
   }
   return conds;
 }
 
-function common(s: SlotConfig, ancestral: boolean, p: Level): Condition[] {
-  const conds: Condition[] = [];
-  if (ancestral) conds.push({ type: 2, kind: "property", value: 4 });
-  if (p.ga > 0) conds.push({ type: 4, kind: "greater_affixes", value: p.ga, flag: 1 });
-  return [...conds, ...affixConditions(s, p)];
+const ANCESTRAL: Condition = { type: 2, kind: "property", value: 4 };
+const gaCondition = (ga: number): Condition => ({ type: 4, kind: "greater_affixes", value: ga, flag: 1 });
+
+/** [recolour conditions or null, show conditions] for one profile, between the rarity and item conditions. */
+function levels(s: SlotConfig, profile: ProfileName): [Condition[] | null, Condition[]] {
+  if (profile === "starter") {
+    const stats = affixConditions(s, false);
+    return [stats.length ? stats : null, []];
+  }
+  const show = [{ ...ANCESTRAL }, ...affixConditions(s, false)];
+  const recolour = s.ga > 0 ? [{ ...ANCESTRAL }, gaCondition(s.ga), ...affixConditions(s, true)] : null;
+  return [recolour, show];
 }
 
-/** Rule name suffix per level, used by the importer to tell them apart from imported names. */
-export const LEVEL_SUFFIX: Record<LevelName, string> = { recolour: "", show: " OK" };
-
 export function slotRules(key: string, s: SlotConfig, cls: string, label: string, profile: ProfileName = "endgame"): Rule[] {
-  const p = s[profile];
   const color = s.color || TIER_COLORS[Math.min(s.tier, TIER_COLORS.length) - 1];
+  const kinds: [string, Condition, Condition][] = [];
+  if (s.uniques.length)
+    kinds.push([`${label} Uni`, { type: 1, kind: "rarity", value: UNIQUE_MASK }, { type: 8, kind: "uniques", ids: [...s.uniques] }]);
+  if (s.legendaries)
+    kinds.push([`${label} Leg`, { type: 1, kind: "rarity", value: s.leg_rarity }, { type: 5, kind: "item_types", ids: slotItemTypes(key, cls) }]);
+  const [recolour, show] = levels(s, profile);
   const out: Rule[] = [];
-  for (const lv of LEVELS) {
-    const level = p[lv];
-    if (!level.on) continue;
-    const vis = lv === "recolour" ? 2 : 0;
-    const rule = (name: string, conditions: Condition[]): Rule =>
-      ({ name: name + LEVEL_SUFFIX[lv], vis, color, enabled: 1, conditions });
-    if (s.uniques.length)
-      out.push(rule(`${label} Uni`, [{ type: 1, kind: "rarity", value: UNIQUE_MASK }, ...common(s, p.ancestral, level),
-        { type: 8, kind: "uniques", ids: [...s.uniques] }]));
-    if (s.legendaries)
-      out.push(rule(`${label} Leg`, [{ type: 1, kind: "rarity", value: s.leg_rarity }, ...common(s, p.ancestral, level),
-        { type: 5, kind: "item_types", ids: slotItemTypes(key, cls) }]));
-  }
+  if (recolour)
+    for (const [name, rarity, items] of kinds)
+      out.push({ name, vis: 2, color, enabled: 1, conditions: [{ ...rarity }, ...structuredClone(recolour), { ...items }] });
+  for (const [name, rarity, items] of kinds)
+    out.push({ name: name + SHOW_SUFFIX, vis: 0, color, enabled: 1, conditions: [{ ...rarity }, ...structuredClone(show), { ...items }] });
   return out;
 }
 

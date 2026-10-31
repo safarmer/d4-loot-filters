@@ -1,16 +1,17 @@
-// Filter JSON -> slot model, with warnings for anything that does not fit. An imported filter
-// fills the endgame profile (a recolour rule -> recolour level, a show rule -> show level); the
-// starter profile keeps its looser defaults.
+// Filter JSON -> slot model, with warnings for anything that does not fit. An imported filter is read
+// as an end-game filter: an ancestral recolour rule with a greater affix count sets the slot's desired
+// stats, n and ga; an ancestral show rule without one sets desired stats and n. The end-game compile
+// also adds the show rule an imported recolour-only slot lacks; `roundtrip` reports those as added.
 //
 // Rules that do not fit stay in the model verbatim as raw rules, placed by tier between the
 // slot rules, so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, UNIQUE_MASK, type Level, type LevelName, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, UNIQUE_MASK, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
-// What a rule's affix conditions say: imports fill the endgame profile's n.
+// What a rule's affix conditions say: the stat lists and n (desired stats needed).
 interface Probe { required: number[]; desired: number[]; ga_wanted: number[]; n: number | null }
 
 function classFromId(classId: number | null): string | null {
@@ -75,7 +76,7 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   }
   const model = defaultModel(cls, doc.name || "Imported");
   model.slot_idx = doc.slot_idx ?? 1;
-  const pairs = new Map<string, Set<string>>(); // slot -> imported "kind/level" pairs
+  const pairs = new Map<string, Set<string>>(); // slot -> imported "kind/vis" pairs
   let tier = 0;
   const last = doc.rules.at(-1);
   const endsHidden = !!last && last.vis === 3 && !last.conditions.length;
@@ -92,16 +93,17 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     const [kind, slots] = cl;
     const by = byType(rule.conditions);
     const probe: Probe = { required: [], desired: [], ga_wanted: [], n: null };
-    const gaMin = by.get(4)?.value ?? 0;
+    const ga = by.get(4)?.value ?? 0;
+    const recolour = rule.vis === 2;
     if (!affixParts(rule.conditions, probe, warnings, rule.name)) return keepRaw("affix layout does not fit");
-    if (probe.ga_wanted.length && !gaMin) return keepRaw("GA-on-stat without a greater affix count");
     if (rule.vis !== 0 && rule.vis !== 2) return keepRaw(`mode ${rule.vis} is neither show nor recolour`);
-    if (by.has(2) && by.get(2)!.value !== 4) return keepRaw(`property ${by.get(2)!.value} is not ancestral`);
+    if (!by.has(2) || by.get(2)!.value !== 4) return keepRaw("end-game rules are ancestral only");
+    if (recolour && !ga) return keepRaw("recolour without a greater affix count");
+    if (!recolour && (ga || probe.ga_wanted.length)) return keepRaw("show rule with a greater affix condition");
     if (kind === "leg" && by.get(1)!.value !== 8) return keepRaw(`rarity mask ${by.get(1)!.value} is not plain legendary (8)`);
 
-    const lv: LevelName = rule.vis === 2 ? "recolour" : "show";
-    const level: Level = { on: true, n: probe.n ?? 0, ga: gaMin };
-    const pair = `${kind}/${lv}`;
+    const n = probe.n ?? 0;
+    const pair = `${kind}/${rule.vis}`;
     const idsFor = (sk: string) => (by.get(8)?.ids ?? []).filter((i) => m.uniques[String(i)].slot === sk);
 
     // Check every slot before changing any, so a rule is either modelled whole or kept raw whole.
@@ -109,33 +111,29 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       const s = model.slots[sk];
       if (!s.enabled) continue;
       const have = pairs.get(sk)!;
+      const hasRecolour = [...have].some((p) => p.endsWith("/2"));
       if (have.has(pair)) return keepRaw(`slot ${sk} already has this rule`);
-      if (!deepEqual([probe.required, probe.desired, probe.ga_wanted, by.has(2)],
-        [s.required, s.desired, s.ga_wanted, s.endgame.ancestral])) return keepRaw(`settings differ from slot ${sk}'s other rule`);
-      if (s.endgame[lv].on && !deepEqual(s.endgame[lv], level)) return keepRaw(`${lv} level differs from slot ${sk}'s other rule`);
+      if (!deepEqual([probe.required, probe.desired, n], [s.required, s.desired, s.n]))
+        return keepRaw(`stats differ from slot ${sk}'s other rule`);
+      if (recolour && hasRecolour && (ga !== s.ga || !deepEqual(probe.ga_wanted, s.ga_wanted)))
+        return keepRaw(`greater affixes differ from slot ${sk}'s other rule`);
       if (kind === "uni" && s.uniques.length && !deepEqual(s.uniques, idsFor(sk))) return keepRaw(`uniques differ from slot ${sk}'s other rule`);
       if (kind === "leg" && s.legendaries && s.leg_rarity !== by.get(1)!.value) return keepRaw(`rarity differs from slot ${sk}'s other rule`);
-      // A slot compiles every kind at every level it has: merge only if that gives back exactly the imported rules.
-      const next = new Set([...have, pair]);
-      const kinds = new Set([...next].map((p) => p.split("/")[0])), levels = new Set([...next].map((p) => p.split("/")[1]));
-      if (next.size !== kinds.size * levels.size) return keepRaw(`would add rules to slot ${sk}`);
     }
 
     if (slots.length > 1) warnings.push(`${rule.name}: uniques span slots ${slots.join(", ")}; split into one rule per slot`);
     if (slots.some((sk) => !model.slots[sk].enabled)) tier += 1;
-    const off: Level = { on: false, n: 0, ga: 0 };
     for (const sk of slots) {
       const s = model.slots[sk];
       if (!s.enabled) {
-        Object.assign(s, {
-          enabled: true, tier,
-          required: probe.required, desired: probe.desired, ga_wanted: probe.ga_wanted,
-        });
-        s.endgame = { ancestral: by.has(2), recolour: { ...off }, show: { ...off } };
+        Object.assign(s, { enabled: true, tier, required: probe.required, desired: probe.desired, n, ga: 0, ga_wanted: [] });
         pairs.set(sk, new Set());
       }
-      if (rule.vis === 2 && rule.color !== "0x00000000") s.color = rule.color;
-      s.endgame[lv] = level;
+      if (recolour) {
+        s.ga = ga;
+        s.ga_wanted = probe.ga_wanted;
+        if (rule.color !== "0x00000000") s.color = rule.color;
+      }
       if (kind === "uni") s.uniques = idsFor(sk);
       else { s.legendaries = true; s.leg_rarity = by.get(1)!.value as number; }
       pairs.get(sk)!.add(pair);

@@ -3,18 +3,20 @@
 Character-sheet loot filter editor. Pick a class, click a paper-doll slot, pick uniques, legendaries
 and stats (tick = desired, star = greater affix wanted on that stat) and a priority tier.
 
-One model exports two filters; import both into the game and switch between them:
+One model exports two filters; import both into the game and switch between them. Each slot has
+one "desired stats needed" count (n) and one "greater affixes to recolour" count (ga):
 
-| Filter | Default | Per slot, two levels (recolour is checked first) |
-|---|---|---|
-| Starter | shows everything else | recolour: 2 desired, 1 GA · show: 1 desired, any GA · not ancestral |
-| End-game (`Strict…` name) | ends with `No Ma'am` | recolour: 3 desired, 2 GA · show: 2 desired, 1 GA · ancestral only |
+| Filter | Recolour rule (checked first) | Show rule | Everything else |
+|---|---|---|---|
+| Starter | n desired stats (GA and ancestral ignored) | always | shown |
+| End-game | ancestral + n desired + ga greater affixes | ancestral + n desired | hidden (`No Ma'am`) |
 
-Recolour is for "likely much better", show for "OK or a bit better". Each level can be switched off,
-and its desired-stat and GA counts set per slot. A starred stat must be the greater affix when the
-level needs any GA (`ga_required_on`). Export encodes through `src/codec.ts` (round-trip checked) and
-copies the string. Imports fill the end-game profile: a recolour rule sets the recolour level, a show
-rule the show level.
+With ga 0 the end-game filter has no recolour rule; with no desired stats the starter has none. A
+starred stat must be the greater affix in the end-game recolour (`ga_required_on`). Export encodes
+through `src/codec.ts` (round-trip checked) and copies the string. Imports are read as end-game
+filters: an ancestral recolour rule with a GA count sets n and ga, an ancestral show rule sets n.
+Non-ancestral rules stay as raw rules. A slot imported with only a recolour rule gains its show rule
+on export (the round trip lists it as added).
 
 Runs completely in the browser: Vite + React 19 + Immer, all TypeScript. The only offline step is
 building the mapping in `data/` from d4data (roughly once per season).

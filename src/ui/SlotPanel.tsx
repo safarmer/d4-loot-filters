@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { LEVELS, PROFILES, validAffixes, type LevelName, type Model, type ProfileName, type SlotConfig } from "../compiler.ts";
+import { validAffixes, type Model, type SlotConfig } from "../compiler.ts";
 import { mapping, STAT_GROUPS } from "../mapping.ts";
 import type { Update } from "./App.tsx";
 import { css, slotColor } from "./colors.ts";
 
-const PROFILE_LABEL: Record<ProfileName, string> = { starter: "Starter", endgame: "End-game" };
-const LEVEL_LABEL: Record<LevelName, string> = { recolour: "Recolour (much better)", show: "Show (OK or a bit better)" };
 const range = (n: number) => Array.from({ length: n + 1 }, (_, i) => i);
 
 /** Desired checkbox. Clearing it also clears the GA star. */
@@ -103,53 +101,34 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
         <div className="row">
           <label><input type="checkbox" checked={s.legendaries} onChange={(e) => edit((d) => { d.legendaries = e.target.checked; })} /> Legendaries count</label>
         </div>
+        <div className="row">
+          <label>Desired stats needed{" "}
+            <select value={s.n} onChange={(e) => edit((d) => { d.n = +e.target.value; })}>
+              {range(6).map((n) => <option key={n} value={n}>{n === 0 ? "any" : n}</option>)}
+            </select>
+          </label>
+          <label>Greater affixes to recolour{" "}
+            <select value={s.ga} onChange={(e) => edit((d) => { d.ga = +e.target.value; })}>
+              {range(4).map((n) => <option key={n} value={n}>{n === 0 ? "none (show only)" : n}</option>)}
+            </select>
+          </label>
+        </div>
         <table className="profiles">
-          <thead>
-            <tr><th>Filter</th><th>Level</th><th>Use</th><th>Desired stats</th><th>Greater affixes</th></tr>
-          </thead>
-          {PROFILES.map((p) => (
-            <tbody key={p}>
-              {LEVELS.map((lv, i) => {
-                const name = `${PROFILE_LABEL[p]} ${lv}`;
-                const L = s[p][lv];
-                return (
-                  <tr key={lv} className={L.on ? "" : "off"}>
-                    {i === 0 && (
-                      <th scope="rowgroup" rowSpan={LEVELS.length}>
-                        {PROFILE_LABEL[p]}
-                        <label className="anc">
-                          <input type="checkbox" checked={s[p].ancestral}
-                            onChange={(e) => edit((d) => { d[p].ancestral = e.target.checked; })} /> ancestral only
-                        </label>
-                      </th>
-                    )}
-                    <td>{LEVEL_LABEL[lv]}</td>
-                    <td>
-                      <input type="checkbox" aria-label={`${name}: use`} checked={L.on}
-                        onChange={(e) => edit((d) => { d[p][lv].on = e.target.checked; })} />
-                    </td>
-                    <td>
-                      <select aria-label={`${name}: desired stats needed`} value={L.n} disabled={!L.on}
-                        onChange={(e) => edit((d) => { d[p][lv].n = +e.target.value; })}>
-                        {range(6).map((n) => <option key={n} value={n}>{n === 0 ? "any" : n}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select aria-label={`${name}: greater affixes needed`} value={L.ga} disabled={!L.on}
-                        onChange={(e) => edit((d) => { d[p][lv].ga = +e.target.value; })}>
-                        {range(4).map((n) => <option key={n} value={n}>{n === 0 ? "any" : n}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          ))}
+          <thead><tr><th>Filter</th><th>Shows</th><th>Recolours</th></tr></thead>
+          <tbody>
+            <tr>
+              <th scope="row">Starter</th>
+              <td>always</td>
+              <td>{s.n > 0 && s.desired.length ? `${s.n} desired stat${s.n > 1 ? "s" : ""}` : "never (no desired stats)"}</td>
+            </tr>
+            <tr>
+              <th scope="row">End-game</th>
+              <td>ancestral{s.n > 0 && s.desired.length ? ` + ${s.n} desired` : ""}</td>
+              <td>{s.ga > 0 ? `ancestral${s.n > 0 && s.desired.length ? ` + ${s.n} desired` : ""} + ${s.ga} GA` : "never"}</td>
+            </tr>
+          </tbody>
         </table>
-        <small>
-          Desired counts the ticked stats. Starred stats must be the greater affix when a level needs any.
-          Recolour is checked first, so set it stricter than show.
-        </small>
+        <small>Starred stats must be the greater affix in the end-game recolour.</small>
       </fieldset>
 
       <div className="pair">
