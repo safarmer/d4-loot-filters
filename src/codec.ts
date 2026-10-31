@@ -1,6 +1,9 @@
 // Diablo 4 loot filter codec: in-game import string (base64 protobuf) <-> filter JSON.
 // Port of the original filter_tool.py. Same JSON shape, same byte output.
+// Wire format and base64 come from @bufbuild/protobuf; base64 is also checked strictly first.
 // encode() re-decodes its own output and refuses a string that does not match the JSON.
+
+import { BinaryReader, BinaryWriter, WireType, base64Decode, base64Encode } from "@bufbuild/protobuf/wire";
 
 // ---------- schema ----------
 // Filter:    1 rule (repeated), 2 name, 3 class_id, 4 slot_idx
@@ -27,57 +30,34 @@ export interface Condition {
 export interface Rule { name: string; vis: number; color: string; enabled: number; conditions: Condition[] }
 export interface Filter { name: string | null; class_id: number | null; slot_idx: number | null; rules: Rule[] }
 
-// ---------- wire format ----------
+// ---------- wire format (via @bufbuild/protobuf) ----------
 type Field = [number, number, number | Uint8Array];
 
-function vint(n: number): number[] {
-  const out: number[] = [];
-  for (;;) {
-    const b = n % 128; n = Math.floor(n / 128);
-    if (n) out.push(b | 0x80);
-    else { out.push(b); return out; }
-  }
-}
-
-function readVint(b: Uint8Array, i: number): [number, number] {
-  let r = 0, mul = 1;
-  for (;;) {
-    if (i >= b.length) throw new Error("truncated varint");
-    const c = b[i++]; r += (c & 0x7f) * mul; mul *= 128;
-    if (!(c & 0x80)) return [r, i];
-  }
-}
-
+// Read every top-level field of a message in order, keeping unknown fields.
 function parse(b: Uint8Array): Field[] {
-  let i = 0;
+  const r = new BinaryReader(b);
   const out: Field[] = [];
-  while (i < b.length) {
-    const start = i;
-    let k: number; [k, i] = readVint(b, i);
-    const f = Math.floor(k / 8), w = k & 7;
-    if (f === 0) throw new Error(`field 0 at byte ${start}`);
-    let v: number | Uint8Array;
-    if (w === 0) [v, i] = readVint(b, i);
-    else if (w === 5) {
-      if (i + 4 > b.length) throw new Error(`truncated fixed32 at byte ${start}`);
-      v = new DataView(b.buffer, b.byteOffset + i, 4).getUint32(0, true); i += 4;
-    } else if (w === 2) {
-      let n: number; [n, i] = readVint(b, i);
-      if (i + n > b.length) throw new Error(`length ${n} overruns message at byte ${start}`);
-      v = b.subarray(i, i + n); i += n;
-    } else throw new Error(`unsupported wire type ${w} at byte ${start}`);
-    out.push([f, w, v]);
+  while (r.pos < r.len) {
+    const start = r.pos;
+    try {
+      const [f, w] = r.tag();
+      if (w === WireType.Varint) out.push([f, w, Number(r.uint64())]);
+      else if (w === WireType.Bit32) out.push([f, w, r.fixed32()]);
+      else if (w === WireType.LengthDelimited) out.push([f, w, r.bytes()]);
+      else throw new Error(`unsupported wire type ${w}`);
+    } catch (e) {
+      throw new Error(`${(e as Error).message} at byte ${start}`);
+    }
   }
   return out;
 }
 
-const ld = (f: number, payload: number[]) => [...vint((f << 3) | 2), ...vint(payload.length), ...payload];
-const vi = (f: number, v: number) => [...vint(f << 3), ...vint(v)];
-function f32(f: number, v: number): number[] {
-  const b = new Uint8Array(4);
-  new DataView(b.buffer).setUint32(0, v, true);
-  return [...vint((f << 3) | 5), ...b];
-}
+type Write = (w: BinaryWriter) => void;
+const ld = (f: number, body: Write): Write => (w) => { w.tag(f, WireType.LengthDelimited).fork(); body(w); w.join(); };
+const vi = (f: number, v: number): Write => (w) => { w.tag(f, WireType.Varint).uint64(v); };
+const f32 = (f: number, v: number): Write => (w) => { w.tag(f, WireType.Bit32).fixed32(v); };
+const raw = (f: number, b: Uint8Array): Write => (w) => { w.tag(f, WireType.LengthDelimited).bytes(b); };
+const all = (parts: Write[]): Write => (w) => parts.forEach((p) => p(w));
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -101,18 +81,18 @@ function decodeCond(b: Uint8Array): Condition {
   return c;
 }
 
-function encodeCond(c: Condition): number[] {
-  const out = vi(1, c.type as number);
-  for (const x of c.ids ?? []) out.push(...f32(2, x));
-  for (const pair of c.ga_required_on ?? []) out.push(...ld(3, [...f32(1, pair[0]), ...f32(2, pair[1])]));
-  if (c.value !== undefined) out.push(...vi(4, c.value));
-  if (c.flag !== undefined) out.push(...vi(6, c.flag));
+function encodeCond(c: Condition): Write {
+  const out: Write[] = [vi(1, c.type as number)];
+  for (const x of c.ids ?? []) out.push(f32(2, x));
+  for (const pair of c.ga_required_on ?? []) out.push(ld(3, all([f32(1, pair[0]), f32(2, pair[1])])));
+  if (c.value !== undefined) out.push(vi(4, c.value));
+  if (c.flag !== undefined) out.push(vi(6, c.flag));
   for (const [f, w, v] of c.extra ?? []) {
-    if (w === 2) out.push(...ld(f, [...Buffer.from(v as string, "hex")]));
-    else if (w === 0) out.push(...vi(f, v as number));
-    else out.push(...f32(f, v as number));
+    if (w === 2) out.push(raw(f, Buffer.from(v as string, "hex")));
+    else if (w === 0) out.push(vi(f, v as number));
+    else out.push(f32(f, v as number));
   }
-  return out;
+  return all(out);
 }
 
 const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -120,9 +100,9 @@ const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 export function decode(text: string): Filter {
   const t = text.trim();
   if (!B64.test(t)) throw new Error("invalid base64 (bad character, padding or length)");
-  const raw = new Uint8Array(Buffer.from(t, "base64"));
+  const bytesIn = base64Decode(t);
   const doc: Filter = { name: null, class_id: null, slot_idx: null, rules: [] };
-  for (const [f, w, v] of parse(raw)) {
+  for (const [f, w, v] of parse(bytesIn)) {
     if (f === 1 && w === 2) {
       const r: Rule = { name: "", vis: 0, color: "0x00000000", enabled: 0, conditions: [] };
       for (const [a, , x] of parse(bytes(v))) {
@@ -143,18 +123,18 @@ export function decode(text: string): Filter {
 }
 
 function rawEncode(doc: Filter): Uint8Array {
-  const out: number[] = [];
-  const enc = new TextEncoder();
+  const w = new BinaryWriter();
   for (const r of doc.rules) {
-    const body = r.name ? ld(1, [...enc.encode(r.name)]) : [];
-    body.push(...vi(2, r.vis), ...f32(3, parseInt(r.color, 16)));
-    for (const c of r.conditions) body.push(...ld(4, encodeCond(c)));
-    body.push(...vi(5, r.enabled));
-    out.push(...ld(1, body));
+    ld(1, all([
+      ...(r.name ? [(x: BinaryWriter) => { x.tag(1, WireType.LengthDelimited).string(r.name); }] : []),
+      vi(2, r.vis), f32(3, parseInt(r.color, 16)),
+      ...r.conditions.map((c) => ld(4, encodeCond(c))),
+      vi(5, r.enabled),
+    ]))(w);
   }
-  if (doc.name) out.push(...ld(2, [...enc.encode(doc.name)]));
-  out.push(...vi(3, doc.class_id as number), ...vi(4, doc.slot_idx as number));
-  return new Uint8Array(out);
+  if (doc.name) w.tag(2, WireType.LengthDelimited).string(doc.name);
+  vi(3, doc.class_id as number)(w); vi(4, doc.slot_idx as number)(w);
+  return w.finish();
 }
 
 function deepEqual(a: unknown, b: unknown): boolean {
@@ -167,11 +147,8 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 export function encode(doc: Filter): string {
-  const text = Buffer.from(rawEncode(doc)).toString("base64");
-  const normalised = decode(Buffer.from(rawEncode(doc)).toString("base64"));
-  if (!deepEqual(decode(text), normalised))
-    throw new Error("round-trip check failed: encoded string does not decode back to the JSON");
-  // also catch JSON the encoder cannot represent (e.g. a key it ignores)
+  const text = base64Encode(rawEncode(doc));
+  const normalised = decode(text);
   if (!deepEqual(stripUndefined(doc), normalised))
     throw new Error("round-trip check failed: JSON has fields or values the format cannot hold");
   return text;

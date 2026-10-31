@@ -21,11 +21,14 @@ for (const f of ["strict_warlock_bs", "roa_very_strict_rogue"]) {
 
 test("rejects bad base64 and truncated data", () => {
   assert.throws(() => decode("abc"), /base64/);
-  assert.throws(() => decode(read("strict_warlock_bs.txt").slice(0, 100)), /overruns/);
+  assert.throws(() => decode(read("strict_warlock_bs.txt").slice(0, 100)), /premature EOF at byte/);
 });
 
 test("rejects JSON the format cannot hold", () => {
   const doc = JSON.parse(read("strict_warlock_bs.json"));
   doc.rules[0].conditions[0].value = 1.5;
+  assert.throws(() => encode(doc), /not an integer/);
+  doc.rules[0].conditions[0].value = 32;
+  doc.rules[0].conditions[0].bogus = 1;
   assert.throws(() => encode(doc), /round-trip/);
 });
