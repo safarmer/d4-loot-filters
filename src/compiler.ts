@@ -4,11 +4,12 @@
 //   {name, class, slot_idx, raw: [{place, rule}],
 //    colors: Colors, charms: CharmConfig, slots: {slot_key: SlotConfig}}
 // CharmConfig: enabled, uniques [picked unique charms, at most MAX_UNIQUES], sets [wanted talisman
-//   sets], desired [charm stats], ga_wanted [starred, also desired], n, ga, any_unique, mats.
+//   sets], desired [charm stats], ga_wanted [starred, also desired], n, ga, mats.
 //   Uniques and sets share the stats and GA settings. Rules, the same in both filters, strongest first:
 //     Unique Charms+GA, Unique Charms+Stats, Unique Charms        (picked unique charms)
 //     Charm Set+GA, Charm Set+Stats, Charm Set                     (charms of wanted sets)
-//     All Unique Charms (any_unique), Charms/Seals for Mats (mats: every legendary-or-better charm and seal)
+//     Charms/Seals for Mats (mats: shows every legendary-or-better charm and seal, so other unique
+//     and set charms show without a colour; no separate "all unique charms" rule)
 //   "+GA" needs n desired stats and ga greater affixes (starred stats must be the GA); "+Stats" n desired.
 // SlotConfig:
 //   enabled,
@@ -48,13 +49,14 @@ export const PROFILES: ProfileName[] = ["starter", "endgame"];
 export const SHOW_SUFFIX = " OK";
 
 export interface Colors {
-  gear: string; charm_ga: string; charm_stats: string; charm_set: string; unique_charm: string; any_unique_charm: string;
+  gear: string; charm_ga: string; charm_stats: string; charm_set: string;
+  unique_charm: string;
 }
 /** Owner's colours: lemon yellow gear; charms: cyan with stats + GA, yellow-green with stats,
- *  orange wanted set, green picked unique, pink any other unique. */
+ *  orange wanted set, green picked unique. */
 export const DEFAULT_COLORS: Colors = {
   gear: "0xFFFFE000", charm_ga: "0xFF00FFF4", charm_stats: "0xFFD3E822", charm_set: "0xFFE89922",
-  unique_charm: "0xFF4E8A20", any_unique_charm: "0xFFE8229F",
+  unique_charm: "0xFF4E8A20",
 };
 
 /** Where a kept-as-is rule goes: before or after the modelled rules (as it was imported). */
@@ -67,7 +69,7 @@ export type Place = "first" | "last";
 export interface CharmConfig {
   enabled: boolean; uniques: number[]; sets: number[];
   desired: number[]; ga_wanted: number[]; n: number; ga: number;
-  any_unique: boolean; mats: boolean;
+  mats: boolean;
 }
 /** Rarity mask of the materials rule: legendary, unique, mythic, set (owner's choice). */
 export const MATS_MASK = 120;
@@ -98,7 +100,7 @@ export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   for (const k of Object.keys(mapping().slots)) slots[k] = defaultSlot();
   return {
     name, class: cls, slot_idx: 1, raw: [],
-    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, uniques: [], sets: [], desired: [], ga_wanted: [], n: 1, ga: 0, any_unique: false, mats: true },
+    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, uniques: [], sets: [], desired: [], ga_wanted: [], n: 1, ga: 0, mats: true },
     slots,
   };
 }
@@ -169,9 +171,6 @@ export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
       out.push({ name, vis: 2, color, enabled: 1, conditions: structuredClone(items) });
     }
   }
-  if (c.any_unique)
-    out.push({ name: "All Unique Charms", vis: 2, color: colors.any_unique_charm, enabled: 1, conditions: [
-      { type: 1, kind: "rarity", value: UNIQUE_MASK }, { type: 5, kind: "item_types", ids: [m.charm_type] }] });
   if (c.mats)
     out.push({ name: "Charms/Seals for Mats", vis: 0, color: "0xFFFF0000", enabled: 1, conditions: [
       { type: 1, kind: "rarity", value: MATS_MASK }, { type: 5, kind: "item_types", ids: [m.charm_type, m.seal_type] }] });

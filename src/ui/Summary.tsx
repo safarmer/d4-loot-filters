@@ -17,7 +17,6 @@ export function Summary({ model, sel }: { model: Model; sel: string }) {
       if (stats) rows.push([`${what} + ${stats}`, model.colors.charm_stats]);
       rows.push([`${what}`, plainColor]);
     }
-    if (c.any_unique) rows.push(["any other unique charm", model.colors.any_unique_charm]);
     return (
       <>
         <h2>Charms <small>(both filters)</small></h2>

@@ -47,10 +47,11 @@ All gear recolours share one colour. Below the divider is one Charms tile. Its p
 columns: unique charms (at most 10), wanted sets, and charm stats (checkbox = desired, star = GA).
 Uniques and sets share the "desired stats needed" and "greater affixes" settings. Rules, the same
 in both filters, strongest first: "Unique Charms+GA", "Unique Charms+Stats", "Unique Charms", then
-"Charm Set+GA", "Charm Set+Stats", "Charm Set", then optionally "All Unique Charms", then
-"Charms/Seals for Mats" (every legendary-or-better charm and seal, rarity 120). "+GA" needs the
+"Charm Set+GA", "Charm Set+Stats", "Charm Set", then "Charms/Seals for Mats" (shows every
+legendary-or-better charm and seal, rarity 120, so other unique and set charms show uncoloured;
+no separate "all unique charms" rule). "+GA" needs the
 desired stats and the GA count (starred stats must be the GA); "+Stats" the desired stats.
-The colours (gear; charm +GA, +Stats, picked unique, wanted set, any other unique) are global settings, in the collapsed Settings section at the top of
+The colours (gear; charm +GA, +Stats, picked unique, wanted set) are global settings, in the collapsed Settings section at the top of
 the right column.
 
 Charms roll their own stats (`Talisman_Charm_*`, allowed on the Charm item label 71), not gear stats.

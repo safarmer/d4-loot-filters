@@ -10,7 +10,6 @@ const COLOR_LABEL: [keyof Colors, string][] = [
   ["charm_stats", "Charm with desired stats"],
   ["unique_charm", "Picked unique charm"],
   ["charm_set", "Charm of a wanted set"],
-  ["any_unique_charm", "Any other unique charm"],
 ];
 
 export function Side({ model, sel, update }: { model: Model; sel: string; update: Update }) {

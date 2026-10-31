@@ -53,8 +53,7 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
           </label>
         </div>
         <div className="row">
-          <label><input type="checkbox" checked={c.any_unique} onChange={(e) => update((d) => { d.charms.any_unique = e.target.checked; })} /> Also recolour every other unique charm</label>
-          <label><input type="checkbox" checked={c.mats} onChange={(e) => update((d) => { d.charms.mats = e.target.checked; })} /> Then show legendary-or-better charms and seals (materials)</label>
+          <label><input type="checkbox" checked={c.mats} onChange={(e) => update((d) => { d.charms.mats = e.target.checked; })} /> Then show legendary-or-better charms and seals (materials, other unique and set charms included)</label>
         </div>
         <small>Uniques and sets share the stats and greater affixes. Charms roll their own stats (Talisman_Charm_…). Colours are in Settings.</small>
       </fieldset>
