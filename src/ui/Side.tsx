@@ -6,7 +6,6 @@ import { Summary } from "./Summary.tsx";
 
 const COLOR_LABEL: [keyof Colors, string][] = [
   ["gear", "Gear (armour, jewellery, weapons)"],
-  ["charm_ga", "Charm with desired stats + greater affixes"],
   ["charm_stats", "Charm with desired stats"],
   ["unique_charm", "Picked unique charm"],
   ["charm_set", "Charm of a wanted set"],

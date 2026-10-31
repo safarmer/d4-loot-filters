@@ -13,7 +13,6 @@ export function Summary({ model, sel }: { model: Model; sel: string }) {
     const rows: [string, string][] = [];
     if (c.enabled) for (const [what, plainColor, on] of [["picked unique", model.colors.unique_charm, c.uniques.length > 0], ["wanted set", model.colors.charm_set, c.sets.length > 0]] as const) {
       if (!on) continue;
-      if (stats && c.ga > 0) rows.push([`${what} + ${stats} + ${c.ga} GA`, model.colors.charm_ga]);
       if (stats) rows.push([`${what} + ${stats}`, model.colors.charm_stats]);
       rows.push([`${what}`, plainColor]);
     }

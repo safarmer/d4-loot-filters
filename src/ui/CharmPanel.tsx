@@ -46,16 +46,11 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
               {range(4).map((n) => <option key={n} value={n}>{n === 0 ? "off" : n}</option>)}
             </select>
           </label>
-          <label>Greater affixes{" "}
-            <select value={c.ga} onChange={(e) => edit((d) => { d.ga = +e.target.value; })}>
-              {range(3).map((n) => <option key={n} value={n}>{n === 0 ? "none" : n}</option>)}
-            </select>
-          </label>
         </div>
         <div className="row">
           <label><input type="checkbox" checked={c.mats} onChange={(e) => update((d) => { d.charms.mats = e.target.checked; })} /> Then show legendary-or-better charms and seals (materials, other unique and set charms included)</label>
         </div>
-        <small>Uniques and sets share the stats and greater affixes. Charms roll their own stats (Talisman_Charm_…). Colours are in Settings.</small>
+        <small>Uniques and sets share the desired stats. Charms roll their own stats (Talisman_Charm_…). Colours are in Settings.</small>
       </fieldset>
 
       <div className="triple">
@@ -90,15 +85,10 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
         </fieldset>
         <fieldset>
           <legend>Stats</legend>
-          <div className="row"><small>{c.desired.length} desired · {c.ga_wanted.length} starred</small></div>
-          <StatList valid={valid} desired={c.desired} starred={c.ga_wanted} nameOf={charmName}
+          <div className="row"><small>{c.desired.length} desired</small></div>
+          <StatList valid={valid} desired={c.desired} nameOf={charmName}
             onDesired={(id, on) => edit((d) => {
               d.desired = on ? [...d.desired, id] : d.desired.filter((x) => x !== id);
-              if (!on) d.ga_wanted = d.ga_wanted.filter((x) => x !== id);
-            })}
-            onStar={(id, on) => edit((d) => {
-              d.ga_wanted = on ? [...d.ga_wanted, id] : d.ga_wanted.filter((x) => x !== id);
-              if (on && !d.desired.includes(id)) d.desired.push(id);
             })} />
         </fieldset>
       </div>
