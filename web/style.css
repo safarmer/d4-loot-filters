@@ -1,0 +1,24 @@
+:root{--bg:#14110f;--panel:#1e1a17;--line:#3a322b;--fg:#e8dfd0;--mut:#9a8f80;--acc:#00dcff;--bad:#ff6a5a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:16px;margin:0 12px 0 0}h2{font-size:13px;margin:16px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+input,select,button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:inherit}
+button{cursor:pointer}button:hover{border-color:var(--acc)}button.primary{background:var(--acc);color:#001a20;border-color:var(--acc)}
+main{display:grid;grid-template-columns:minmax(260px,320px) minmax(340px,1fr) minmax(220px,300px);gap:16px;padding:16px}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+#doll{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start}
+.slot{background:var(--panel);border:2px solid var(--line);border-radius:6px;padding:8px;min-height:64px;cursor:pointer;text-align:left}
+.slot.on{border-color:var(--c,var(--acc))}.slot.sel{outline:2px solid var(--acc)}.slot.off{opacity:.55}
+.slot b{display:block}.slot small{color:var(--mut)}
+#doll{grid-template-areas:". helm amulet" "gloves chest ring" "weapon pants offhand" ". boots ."}
+#panel,#side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}
+fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:8px}legend{color:var(--mut);padding:0 4px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:4px 0}
+.list{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;margin-top:6px}
+.list label{display:flex;gap:8px;padding:2px 8px;align-items:center}.list label:hover{background:#2a241f}
+.affix{display:grid;grid-template-columns:1fr auto;gap:8px;padding:2px 8px;align-items:center}
+.affix select{padding:1px 4px}.affix .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muted,small{color:var(--mut)}ul,ol{padding-left:18px;margin:0}li{margin:2px 0}
+#status{margin-left:auto}.ok{color:#7fe08a}.err{color:var(--bad)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:6px}
