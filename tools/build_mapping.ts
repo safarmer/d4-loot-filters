@@ -153,8 +153,8 @@ function plain(text: string | null, slot: (expr: string, fmt: string) => string 
   const out = text
     .replace(/\{if:[^}]*\}((?:(?!\{if:)[\s\S])*?)\{else\}([\s\S]*?)\{\/if\}/g, "$2")
     .replace(/\{if:[^}]*\}[\s\S]*?\{\/if\}/g, "")
-    .replace(/\[([^\]|]*)\|([^|\]]*)\|?[^\]]*\]/g, (_, expr: string, fmt: string) => slot(expr, fmt))
-    .replace(/\[([^\]]*)\]/g, (_, expr: string) => slot(expr, ""))
+    // one pass over [expr] and [expr|fmt|] slots, so a slot's own output ("[80% - 100%]") is not read again
+    .replace(/\[([^\]|]*)(?:\|([^|\]]*)\|?[^\]]*)?\]/g, (_, expr: string, fmt?: string) => slot(expr, fmt ?? ""))
     .replace(/\{[^}]*\}/g, "")
     .replace(/\s+/g, " ").trim();
   return out || undefined;

@@ -241,6 +241,14 @@ test("charms: uniques and sets share stats; +Stats and plain per group; no GA ru
   assert.ok(validCharmAffixes("warlock").includes(2545972));
   assert.ok(!validCharmAffixes("warlock").includes(1829592)); // S04_Life is a gear stat
 });
+test("unique power text shows value ranges in brackets", () => {
+  const u = mapping().uniques;
+  assert.match(u[2549162].power!, /deals \[80% - 100%\] increased damage/); // Nails of the Gore-Crowned
+  assert.match(u[2549170].power!, /reduced by \[0\.6 - 1\] seconds/); // Footfalls of the Waning World
+  assert.match(u[609820].power!, /Gain \+6 Rank/); // Harlequin Crest: a fixed value, no brackets
+  assert.ok(!Object.values(u).some((x) => /\[-|NaN/.test(x.power ?? "")));
+});
+
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
 });
