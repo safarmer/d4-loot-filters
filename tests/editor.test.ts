@@ -254,7 +254,7 @@ test("unique power text shows value ranges in brackets", () => {
 
 test("import maps stat IDs to the variants that can roll on the rule's items", () => {
   const m = mapping();
-  const { model, warnings } = roundtrip(load("strict_warlock_bs"));
+  const { model, warnings } = roundtrip(loadOld()); // before the stats were mapped
   // amulet rolls the _Greater core stat and life; the plain IDs stay (unique fixed stats unverified)
   for (const name of ["X2_CoreStat_Willpower_Greater", "X2_Life_Greater", "S04_CoreStat_Willpower"])
     assert.ok(model.slots.amulet.desired.some((i) => m.affixes[i].name === name), name);
