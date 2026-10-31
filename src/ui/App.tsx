@@ -90,10 +90,12 @@ export function App() {
           }} />
         </label>
         <button onClick={() => { setModel(defaultModel(model.class, model.name)); setNotes([]); }}>New</button>
-        {PROFILES.map((p) => (
-          <button key={p} className="primary" onClick={() => compile(p)}>Copy {PROFILE_LABEL[p]}</button>
-        ))}
         <span id="status" className={status.bad ? "err" : "ok"}>{status.msg}</span>
+        <div className="exports">
+          {PROFILES.map((p) => (
+            <button key={p} className="primary" onClick={() => compile(p)}>Copy {PROFILE_LABEL[p]}</button>
+          ))}
+        </div>
       </header>
       {manual && (
         <div className="paste">

@@ -60,3 +60,5 @@ textarea{width:100%;min-height:80px;background:var(--panel);color:var(--fg);bord
 .ucard b{font-size:15px}.ucard .unique{color:var(--unique)}.ucard .mythic{color:var(--mythic)}
 .ucard p{margin:0}.ucard ul{margin:0;padding-left:16px;color:#8fb4ff}.ucard .flavor{color:var(--mut);font-style:italic}
 .list label.mythic{color:var(--mythic)}
+/* copy buttons on their own centred line below the header controls */
+.exports{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
