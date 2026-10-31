@@ -1,4 +1,4 @@
-"""Slot model -> filter JSON (the structure filter_tool.py encodes).
+"""Slot model -> filter JSON (the structure tools/filter_tool.ts encodes).
 
 Model:
   {"name", "class", "slot_idx", "raw": [{"tier": float, "rule": raw rule}],
