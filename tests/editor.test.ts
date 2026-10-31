@@ -14,6 +14,8 @@ loadMapping();
 
 const LF = join(import.meta.dirname, "..", "..", "Loot Filters");
 const load = (f: string) => decode(readFileSync(join(LF, f + ".txt"), "utf8"));
+// the Warlock filter before it was rebuilt by the editor (2026-10-31): the import-cleanup cases
+const loadOld = () => decode(readFileSync(join(import.meta.dirname, "fixtures", "strict_warlock_bs_2026-10-31.txt"), "utf8"));
 const FILTERS = ["strict_warlock_bs", "roa_very_strict_rogue"];
 
 test("every filter id resolves in the mapping", () => {
@@ -57,7 +59,7 @@ test("rogue: every changed rule is explained by an import note", () => {
 });
 
 test("import cleanup: bad charm rules, gear rarity, gear colour", () => {
-  const { model, warnings } = roundtrip(load("strict_warlock_bs"));
+  const { model, warnings } = roundtrip(loadOld());
   // All Unique Charms dropped; Build Unique Charms loses the gear amulet and becomes the picked list
   assert.ok(warnings.some((w) => w.startsWith("All Unique Charms: dropped")));
   assert.equal(model.charms.uniques.length, 10);
@@ -95,7 +97,8 @@ test("stat lists hold only rollable affixes, including every affix the working f
         if (c.type === 6) for (const i of c.ids ?? []) {
           // set-charm rules (talisman set condition) take charm stats; gear rules take gear stats.
           // The Rogue reference filter still has gear stats in its charm rule (left as is).
-          const charm = r.conditions.some((x) => x.type === 9);
+          const types = r.conditions.find((x) => x.type === 5)?.ids ?? [];
+          const charm = r.conditions.some((x) => x.type === 9) || (types.length > 0 && types.every((t) => t === 2288901 || t === 2326144));
           const a = m.affixes[i];
           if (charm && f === "roa_very_strict_rogue") continue;
           assert.ok(charm ? a.charm_stat : a.rollable && !a.hidden, `${f}: ${a.name}`);
@@ -233,7 +236,7 @@ test("charms: uniques and sets share stats; +Stats and plain per group; no GA ru
   assert.deepEqual([back.uniques, back.sets, back.desired, back.n, back.mats],
     [uniques, [2340371], [2545972, 2545970], 1, true]);
   // the Warlock filter: the GA Needed Set Charms rule is dropped with a note; the rest imports
-  const { model, warnings } = roundtrip(load("strict_warlock_bs"));
+  const { model, warnings } = roundtrip(loadOld());
   assert.ok(warnings.some((w) => w.startsWith("GA Needed Set Charms: dropped")));
   assert.deepEqual([model.charms.sets, model.charms.n], [[2340371, 2340376], 1]);
   assert.deepEqual(model.charms.desired, [2545972, 2545970, 2588359]); // Talisman_Charm_ stats
