@@ -28,7 +28,13 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
   const m = mapping();
   const def = m.slots[slotKey], s = model.slots[slotKey], cls = model.class;
   const [uq, setUq] = useState("");
-  const edit = (fn: (s: SlotConfig) => void) => update((d) => fn(d.slots[slotKey]));
+  // picking the first item (unique or legendaries) enables the slot; clearing the last disables it
+  const hasItems = (x: SlotConfig) => x.uniques.length > 0 || x.legendaries;
+  const edit = (fn: (s: SlotConfig) => void) => update((d) => {
+    const slot = d.slots[slotKey], had = hasItems(slot);
+    fn(slot);
+    if (hasItems(slot) !== had) slot.enabled = !had;
+  });
 
   const uniques = useMemo(() => {
     // hidden items (placeholders, past-season copies) show only when the filter already uses them

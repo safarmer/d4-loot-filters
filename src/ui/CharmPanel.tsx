@@ -12,7 +12,12 @@ const charmName = (label: string) => label.replace(/^Talisman Charm (Affix )?/, 
 export function CharmPanel({ model, update }: { model: Model; update: Update }) {
   const m = mapping();
   const c = model.charms, cls = model.class;
-  const edit = (fn: (c: CharmConfig) => void) => update((d) => fn(d.charms));
+  // ticking the first wanted set enables charms; clearing the last disables them
+  const edit = (fn: (c: CharmConfig) => void) => update((d) => {
+    const had = d.charms.sets.length > 0;
+    fn(d.charms);
+    if ((d.charms.sets.length > 0) !== had) d.charms.enabled = !had;
+  });
   const valid = useMemo(() => validCharmAffixes(cls), [cls]);
   const sets = useMemo(() => {
     const ids = [...new Set([...classSets(cls), ...c.sets])];

@@ -11,6 +11,10 @@ one "desired stats needed" count (n) and one "greater affixes to recolour" count
 | Starter | n desired stats (GA and ancestral ignored) | always | shown |
 | End-game | ancestral + n desired + ga greater affixes | ancestral + n desired | hidden (`No Ma'am`) |
 
+A slot turns on when its first item is picked (a unique, or "Legendaries count") and off when the
+last is cleared; Charms do the same with wanted sets. Ticking stats alone does not change it, and the
+Enabled box still works by hand.
+
 All gear recolours share one colour. Charms (their own tile, below the gear) recolour set charms
 of the wanted talisman sets in both filters: "Charm Set+Stats" (a wanted set with n desired charm
 stats) before "Charm Set" (any charm of a wanted set), each with its own colour. The three colours
