@@ -47,12 +47,12 @@ export function slotItemTypes(slotKey: string, cls: string): number[] {
   return usable.length ? usable : ids;
 }
 
-/** Affix ids that can roll on this slot for this class. */
-export function validAffixes(slotKey: string, cls: string, tempered = false): number[] {
+/** Rollable affix ids that can appear on this slot for this class. */
+export function validAffixes(slotKey: string, cls: string): number[] {
   const m = mapping();
   const labels = new Set(m.slots[slotKey].labels);
   return Object.entries(m.affixes)
-    .filter(([, a]) => a.labels.some((l) => labels.has(l)) && a.classes.includes(cls) && (tempered || !a.tempered))
+    .filter(([, a]) => a.labels.some((l) => labels.has(l)) && a.classes.includes(cls) && a.rollable)
     .map(([i]) => Number(i))
     .sort((a, b) => a - b);
 }

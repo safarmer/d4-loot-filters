@@ -10,6 +10,8 @@ export interface UniqueDef {
 export interface AffixDef {
   name: string; label: string; labels: number[]; classes: string[];
   tempered: boolean; magic_type: number;
+  /** Can roll as a random stat on gear (see tools/build_mapping.ts). */
+  rollable: boolean;
 }
 export interface Mapping {
   source: string;

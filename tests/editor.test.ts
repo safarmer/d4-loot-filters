@@ -57,6 +57,18 @@ test("valid stats depend on the slot", () => {
   assert.ok(helm.has(1829592)); // S04_Life, from the working filter
 });
 
+test("stat lists hold only rollable affixes, including every affix the working filters use", () => {
+  const m = mapping();
+  for (const f of FILTERS)
+    for (const r of load(f).rules)
+      for (const c of r.conditions)
+        if (c.type === 6) for (const i of c.ids ?? []) assert.ok(m.affixes[i].rollable, `${f}: ${m.affixes[i].name}`);
+  const names = validAffixes("boots", "warlock").map((i) => m.affixes[i].name);
+  assert.ok(names.includes("S04_Movement_Speed"));
+  for (const bad of ["Movement_Speed", "Resistance_Single_Fire"]) assert.ok(!names.includes(bad), bad);
+  assert.ok(!names.some((n) => /^(UNIQUE|TEST|Runeword|RuneWord|X2_Transfiguration)/i.test(n)), "junk affix in list");
+});
+
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
 });

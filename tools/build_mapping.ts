@@ -38,6 +38,17 @@ const SLOTS: [string, string, string[]][] = [
 ];
 const CHARM_TYPE = 2288901, SEAL_TYPE = 2326144;
 
+// Affix dwFlags bits, inferred from data and checked against every affix id in the working filters:
+// 0x01 = can roll as a random stat; 0x80 = superseded copy (e.g. Movement_Speed vs S04_Movement_Speed).
+const ROLLS = 0x01, SUPERSEDED = 0x80;
+const NOT_REAL = /^(test|unique)_/i; // test and unique-only affixes that still carry the roll bit
+
+/** A random stat that can roll on gear: not a legendary power, tempered affix, unique-only or old copy. */
+function rollable(name: string, d: any): boolean {
+  return (d.dwFlags & ROLLS) !== 0 && (d.dwFlags & SUPERSEDED) === 0 && d.eMagicType === 0
+    && !d.bIsTemperedAffix && !NOT_REAL.test(name);
+}
+
 const load = (p: string): any => JSON.parse(readFileSync(p, "utf8"));
 const classes = (flags: number[]) => CLASSES.filter((_, i) => flags[i]);
 
@@ -116,6 +127,7 @@ for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
   affixes[d.__snoID__] = {
     name, label: pretty(name), labels: [...d.arAllowedItemLabels].sort((a: number, b: number) => a - b),
     classes: classes(d.fAllowedForPlayerClass), tempered: Boolean(d.bIsTemperedAffix), magic_type: d.eMagicType,
+    rollable: rollable(name, d),
   };
 }
 

@@ -56,10 +56,15 @@ Rules that do not fit the slot model stay as raw rules (kept in tier position) a
 Known: rules with a `uniques` + `item_types` pair, rarity masks other than 8, and a second rule for
 the same slot stay raw. Multi-slot unique rules are split per slot (same behaviour).
 
-## Known issues
-- The stat list includes affixes that cannot roll on gear (e.g. `UNIQUE INHERENT …`, `TEST …`,
-  `Runeword …`, older non-`S04_` copies). The mapping builder keeps every affix with item labels.
-  Where labels clash, the UI shows the internal name.
+## Stat lists
+The mapping keeps every affix with item labels, so any affix ID in a filter resolves to a name. Stat
+pickers show only affixes marked `rollable`: dwFlags bit `0x01` set, bit `0x80` clear (superseded
+copies such as `Movement_Speed` vs `S04_Movement_Speed`), magic type 0 (not a legendary power), not
+tempered, and not named `TEST_…`/`UNIQUE_…`. The flag meanings are inferred from the data. The rule
+keeps all 29 affix IDs the two working filters use and cuts 2,618 affixes to 362 (Warlock boots:
+163 → 37). Where labels still clash, the UI shows the internal name.
+
+Unverified: whether seasonal stats such as `S12_KillStreak_*` still roll in the current season.
 
 ## Unverified
 - Filter `class_id` is known only for warlock (6) and rogue (7). Other classes cannot compile.
