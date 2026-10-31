@@ -20,6 +20,7 @@
 //   starter  recolour: n desired stats (GA and ancestral ignored)  ·  show: always
 //   endgame  recolour: ancestral + n desired + ga greater affixes (starred stats must be the GA)
 //            show:     ancestral + n desired
+//   strict   recolour: ancestral + n desired + ga greater affixes, one rule; no show rule
 // The recolour rule comes first (first match wins). With ga 0 the end-game filter has no recolour rule.
 // All gear recolours use colors.gear.
 // Gear rules merge across slots where that cannot change what matches (see gearRules), and
@@ -45,8 +46,11 @@ export const MYTHIC_MASK = 32;
 const CODEX: Rule = { name: "Codex Upgrades", vis: 2, color: "0xFFFF0000", enabled: 1, conditions: [{ type: 3, kind: "codex", flag: 1 }] };
 const MYTHICS: Rule = { name: "Mythics", vis: 0, color: "0xFFFF0000", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: MYTHIC_MASK }] };
 
-export type ProfileName = "starter" | "endgame";
-export const PROFILES: ProfileName[] = ["starter", "endgame"];
+export type ProfileName = "starter" | "endgame" | "strict";
+export const PROFILES: ProfileName[] = ["starter", "endgame", "strict"];
+/** Filter name suffix and button label per profile. */
+export const PROFILE_LABEL: Record<ProfileName, string> = { starter: "starter", endgame: "end-game", strict: "strict end-game" };
+const NAME_SUFFIX: Record<ProfileName, string> = { starter: " Starter", endgame: "", strict: " Strict" };
 /** Show rules carry this suffix; recolour rules use the plain slot label. */
 export const SHOW_SUFFIX = " OK";
 
@@ -192,8 +196,11 @@ function specs(s: SlotConfig, profile: ProfileName): Record<LevelName, Spec | nu
   const base = { required: [...s.required], desired: n ? desired : [], n, pairs: [] as number[] };
   if (profile === "starter")
     return { recolour: n || s.required.length ? { ...base, ancestral: false, ga: 0 } : null, show: { ...base, ancestral: false, ga: 0, n: 0, desired: [], required: [] } };
+  const recolour = { ...base, ancestral: true, ga: s.ga, pairs: n && s.ga > 0 ? [...s.ga_wanted] : [] };
+  // strict end-game: one rule, the desired stats and the GA count together; nothing else shows
+  if (profile === "strict") return { recolour, show: null };
   return {
-    recolour: s.ga > 0 ? { ...base, ancestral: true, ga: s.ga, pairs: n ? [...s.ga_wanted] : [] } : null,
+    recolour: s.ga > 0 ? recolour : null,
     show: { ...base, ancestral: true, ga: 0 },
   };
 }
@@ -311,13 +318,13 @@ export function checkLimits(f: Filter): string[] {
   return problems;
 }
 
-/** Filter for one profile. The endgame filter keeps the model's name; the starter adds " Starter". */
+/** Filter for one profile. The endgame filter keeps the model's name; starter and strict add a suffix. */
 export function compileModel(model: Model, profile: ProfileName = "endgame"): Filter {
   const m = mapping();
   const rules = [...orderedRules(model, profile).map((r) => r.rule), { ...HIDE_ALL }];
   const cid = m.filter_class_id[model.class];
   if (cid === undefined)
     throw new Error(`filter class_id for ${model.class} is unverified; import one of its filters first`);
-  const name = profile === "starter" ? `${model.name} Starter` : model.name;
+  const name = model.name + NAME_SUFFIX[profile];
   return { name, class_id: cid, slot_idx: model.slot_idx ?? 1, rules };
 }

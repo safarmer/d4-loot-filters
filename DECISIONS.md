@@ -37,3 +37,5 @@ that file stays short. Read this before changing editor behavior. The layout and
   not editor settings.
 - **Goal (met):** the editor runs completely in the browser (Vite + React, no server). Building
   the mapping in `editor\data\` from d4data stays an offline step. Keep `editor\src\` free of Node-only APIs.
+- Third profile, strict end-game (owner, 2026-11-01): per slot one recolour rule needing the desired
+  stats and the GA count together (starred stats must be the GA); no show rule. Name suffix " Strict".

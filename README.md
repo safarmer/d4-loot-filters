@@ -3,13 +3,14 @@
 Character-sheet loot filter editor. Pick a class, click a paper-doll slot, pick uniques, legendaries
 and stats (tick = desired, star = greater affix wanted on that stat).
 
-One model exports two filters; import both into the game and switch between them. Each slot has
+One model exports three filters; import both into the game and switch between them. Each slot has
 one "desired stats needed" count (n) and one "greater affixes to recolour" count (ga):
 
 | Filter | Recolour rule (checked first) | Show rule |
 |---|---|---|
 | Starter | n desired stats (GA and ancestral ignored) | always |
 | End-game | ancestral + n desired + ga greater affixes | ancestral + n desired |
+| Strict end-game (`… Strict`) | ancestral + n desired + ga greater affixes, one rule | none |
 
 Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game.
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { produce } from "immer";
 import { decode, encode } from "../codec.ts";
-import { checkLimits, compileModel, defaultModel, MAX_RULES, PROFILES, type Model, type ProfileName } from "../compiler.ts";
+import { checkLimits, compileModel, defaultModel, MAX_RULES, PROFILE_LABEL, PROFILES, type Model, type ProfileName } from "../compiler.ts";
 import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
 import { SlotPanel } from "./SlotPanel.tsx";
@@ -91,7 +91,7 @@ export function App() {
         </label>
         <button onClick={() => { setModel(defaultModel(model.class, model.name)); setNotes([]); }}>New</button>
         {PROFILES.map((p) => (
-          <button key={p} className="primary" onClick={() => compile(p)}>Copy {p === "starter" ? "starter" : "end-game"}</button>
+          <button key={p} className="primary" onClick={() => compile(p)}>Copy {PROFILE_LABEL[p]}</button>
         ))}
         <span id="status" className={status.bad ? "err" : "ok"}>{status.msg}</span>
       </header>

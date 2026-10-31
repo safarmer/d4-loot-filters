@@ -14,7 +14,7 @@ const COLOR_LABEL: [keyof Colors, string][] = [
 export function Side({ model, sel, update }: { model: Model; sel: string; update: Update }) {
   // rule counts per filter, against the limit (No Ma'am included)
   const counts: { label: string; n: number }[] = [];
-  for (const [p, label] of [["starter", "Starter"], ["endgame", "End-game"]] as const) {
+  for (const [p, label] of [["starter", "Starter"], ["endgame", "End-game"], ["strict", "Strict"]] as const) {
     try { counts.push({ label, n: compileModel(model, p).rules.length }); } catch { /* unverified class */ }
   }
   // the real end-game output order (see orderedRules)

@@ -273,6 +273,24 @@ test("import maps stat IDs to the variants that can roll on the rule's items", (
   assert.ok(!again.warnings.some((w) => /stats mapped/.test(w)), again.warnings.join("; "));
 });
 
+test("strict end-game: one rule per item kind, desired stats and GA count together", () => {
+  const m = defaultModel("warlock", "W");
+  Object.assign(m.slots.helm, { enabled: true, uniques: [2647147], legendaries: true, desired: [1829592, 1829554], ga_wanted: [1829592], n: 2, ga: 1 });
+  const f = compileModel(m, "strict");
+  assert.equal(f.name, "W Strict");
+  const gear = f.rules.filter((r) => r.name.startsWith("Helm"));
+  assert.deepEqual(gear.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Leg", 2]]);
+  for (const r of gear) {
+    assert.deepEqual(r.conditions.map((c) => c.type).sort(), [1, 2, 4, 6, r.name.endsWith("Uni") ? 8 : 5].sort());
+    assert.equal(r.conditions.find((c) => c.type === 6)!.value, 2);
+    assert.deepEqual(r.conditions.find((c) => c.type === 6)!.ga_required_on, [[1829592, 1829592]]);
+  }
+  assert.deepEqual(f.rules.slice(-3).map((r) => [r.name, r.enabled]), [["Any 2GA+ Ancestral", 0], ["Mythics", 1], ["No Ma'am", 1]]);
+  encode(f);
+  // the Warlock filter's strict version fits the limits
+  assert.deepEqual(checkLimits(compileModel(roundtrip(load("strict_warlock_bs")).model, "strict")), []);
+});
+
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
 });

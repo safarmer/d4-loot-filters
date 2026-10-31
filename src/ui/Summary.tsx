@@ -49,9 +49,14 @@ export function Summary({ model, sel }: { model: Model; sel: string }) {
             <td>ancestral{stats ? ` + ${stats}` : ""}</td>
             <td>{s.ga > 0 ? `ancestral${stats ? ` + ${stats}` : ""} + ${s.ga} GA` : "never"}</td>
           </tr>
+          <tr>
+            <th scope="row">Strict</th>
+            <td>never</td>
+            <td>ancestral{stats ? ` + ${stats}` : ""}{s.ga > 0 ? ` + ${s.ga} GA` : ""}</td>
+          </tr>
         </tbody>
       </table>
-      <small>Starred stats must be the greater affix in the end-game recolour.</small>
+      <small>Starred stats must be the greater affix in the end-game and strict recolours.</small>
     </>
   );
 }
