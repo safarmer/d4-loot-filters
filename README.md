@@ -132,7 +132,7 @@ Hovering (or focusing) a unique in a pick list shows its power, fixed stats and 
 mapping keeps these for shown uniques: power from the unique affix's `Desc` string, cleaned to plain
 text (the non-mythic wording). Value slots show the roll range, worked out from the power affix's
 formulas (`Float…RangeWithInterval…(…, min, max)`) and fixed values (`arStaticValues`), e.g.
-"80-100%". A slot stays `#` when it depends on the character (weapon damage) or its formula is
+"[80% - 100%]" (a fixed value shows as a plain number). A slot stays `#` when it depends on the character (weapon damage) or its formula is
 broken in the game data (56 of 456 powers have at least one),
 fixed stats from the item's other forced affixes, flavour from the item's `Flavor` string.
 

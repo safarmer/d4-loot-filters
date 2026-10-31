@@ -126,7 +126,7 @@ function formulaRange(formula: string): [number, number] | null {
 const num = (v: number) => String(Math.round(v * 100) / 100);
 
 /**
- * A value slot's text: the expression evaluated at the affix's minimum and maximum ("80-100%"),
+ * A value slot's text: the expression evaluated at the affix's minimum and maximum ("[80% - 100%]"),
  * or "#" when it depends on something outside the item (e.g. the character's weapon damage).
  */
 function slotText(expr: string, fmt: string, vars: Record<string, [number, number]>, statics: number[]): string {
@@ -140,7 +140,7 @@ function slotText(expr: string, fmt: string, vars: Record<string, [number, numbe
   const a = at(0), b = at(1);
   if (a === null || b === null) return "#" + pct;
   const [lo, hi] = a <= b ? [a, b] : [b, a];
-  return (lo === hi ? num(lo) : `${num(lo)}-${num(hi)}`) + pct;
+  return lo === hi ? num(lo) + pct : `[${num(lo)}${pct} - ${num(hi)}${pct}]`;
 }
 
 /**
