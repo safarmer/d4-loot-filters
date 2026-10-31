@@ -256,8 +256,13 @@ test("import maps stat IDs to the variants that can roll on the rule's items", (
   const m = mapping();
   const { model, warnings } = roundtrip(loadOld()); // before the stats were mapped
   // amulet rolls the _Greater core stat and life; the plain IDs stay (unique fixed stats unverified)
-  for (const name of ["X2_CoreStat_Willpower_Greater", "X2_Life_Greater", "S04_CoreStat_Willpower"])
+  for (const name of ["X2_CoreStat_Willpower_Greater", "X2_Life_Greater"])
     assert.ok(model.slots.amulet.desired.some((i) => m.affixes[i].name === name), name);
+  // every slot keeps only stats it can roll, so nothing shows as invalid
+  for (const [k, sl] of Object.entries(model.slots)) {
+    const ok = new Set(validAffixes(k, "warlock"));
+    assert.ok([...sl.desired, ...sl.required].every((i) => ok.has(i)), k);
+  }
   assert.ok(warnings.some((w) => /Jewelry Good GA Uni: stats mapped/.test(w)));
   // a charm rule's gear stat becomes the charm stat (Rogue reference filter)
   const rogue = roundtrip(load("roa_very_strict_rogue")).model.charms;

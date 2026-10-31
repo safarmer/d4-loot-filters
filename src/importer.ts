@@ -271,7 +271,11 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
         const a = by.get(6)!, ids = a.ids ?? [], pairs = a.ga_required_on ?? [];
         if (pairs.some(([x, y]) => x !== y) || (charm.level === "stats" && pairs.length)) return keepRaw("charm GA-on-stat layout does not fit");
         if (statsSeen && (!deepEqual(c.desired, ids) || c.n !== a.value)) return keepRaw("charm stats differ from the other charm rule");
-        c.desired = [...ids];
+        const ok = new Set(validCharmAffixes(cls!));
+        const valid = ids.filter((i) => ok.has(i));
+        if (valid.length < ids.length)
+          warnings.push(`${rule.name}: charms cannot roll ${ids.filter((i) => !ok.has(i)).map((i) => m.affixes[String(i)]?.name ?? i).join(", ")}; left out`);
+        c.desired = valid;
         c.n = a.value ?? 1;
       }
       if (charm.group === "uni") c.uniques = [...items]; else c.sets = [...items];
@@ -298,6 +302,18 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     if (!recolour && (ga || probe.ga_wanted.length)) return keepRaw("show rule with a greater affix condition");
     if (kind === "leg" && by.get(1)!.value !== 8) return keepRaw(`rarity mask ${by.get(1)!.value} is not plain legendary (8)`);
 
+    // each slot keeps only the stats that can roll on it (other slots' stats in a multi-slot rule, and
+    // plain IDs where the slot rolls a _Greater variant, would show as invalid); the compiler merges
+    // slots again where that cannot change a match
+    const own = (sk: string) => {
+      const ok = new Set(validAffixes(sk, cls!));
+      const desired = probe.desired.filter((i) => ok.has(i));
+      return {
+        required: probe.required.filter((i) => ok.has(i)), desired,
+        ga_wanted: probe.ga_wanted.filter((i) => ok.has(i)),
+        n: Math.min(probe.n ?? 0, desired.length),
+      };
+    };
     const n = probe.n ?? 0;
     const pair = `${kind}/${rule.vis}`;
     const idsFor = (sk: string) => (by.get(8)?.ids ?? []).filter((i) => m.uniques[String(i)].slot === sk);
@@ -309,9 +325,10 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       const have = pairs.get(sk)!;
       const hasRecolour = [...have].some((p) => p.endsWith("/2"));
       if (have.has(pair)) return keepRaw(`slot ${sk} already has this rule`);
-      if (!deepEqual([probe.required, probe.desired, n], [s.required, s.desired, s.n]))
+      const o = own(sk);
+      if (!deepEqual([o.required, o.desired, o.n], [s.required, s.desired, s.n]))
         return keepRaw(`stats differ from slot ${sk}'s other rule`);
-      if (recolour && hasRecolour && (ga !== s.ga || !deepEqual(probe.ga_wanted, s.ga_wanted)))
+      if (recolour && hasRecolour && (ga !== s.ga || !deepEqual(o.ga_wanted, s.ga_wanted)))
         return keepRaw(`greater affixes differ from slot ${sk}'s other rule`);
       if (kind === "uni" && s.uniques.length && !deepEqual(s.uniques, idsFor(sk))) return keepRaw(`uniques differ from slot ${sk}'s other rule`);
       if (kind === "leg" && s.legendaries && s.leg_rarity !== by.get(1)!.value) return keepRaw(`rarity differs from slot ${sk}'s other rule`);
@@ -324,13 +341,22 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     modelled = true;
     for (const sk of slots) {
       const s = model.slots[sk];
+      // note stats left out; in a multi-slot rule only those no slot of the rule can roll (the rest
+      // belong to another slot, as in the compiler's merged rules)
+      const kept = own(sk);
+      const anySlot = new Set(slots.flatMap((k) => [...own(k).required, ...own(k).desired]));
+      const dropped = [...probe.required, ...probe.desired].filter((i) => !kept.required.includes(i) && !kept.desired.includes(i)
+        && (slots.length === 1 || !anySlot.has(i)));
+      if (dropped.length && (slots.length === 1 || sk === slots[0]))
+        warnings.push(`${rule.name}: ${slots.length === 1 ? sk : slots.join("/")} cannot roll ${[...new Set(dropped)].map((i) => m.affixes[String(i)]?.name ?? i).join(", ")}; left out`);
       if (!s.enabled) {
-        Object.assign(s, { enabled: true, required: probe.required, desired: probe.desired, n, ga: 0, ga_wanted: [] });
+        const o = own(sk);
+        Object.assign(s, { enabled: true, required: o.required, desired: o.desired, n: o.n, ga: 0, ga_wanted: [] });
         pairs.set(sk, new Set());
       }
       if (recolour) {
         s.ga = ga;
-        s.ga_wanted = probe.ga_wanted;
+        s.ga_wanted = own(sk).ga_wanted;
         if (!gearColor) model.colors.gear = rule.color;
         gearColor = true;
       }

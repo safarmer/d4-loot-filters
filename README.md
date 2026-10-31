@@ -143,10 +143,11 @@ rules are cleaned to fit where the intent is clear, each with an import note:
 - gear unique IDs in a charm-type uniques rule are removed (they can never match);
 - a legendary rule with a greater affix condition and rarity 14 becomes rarity 8 (greater affixes
   only roll on legendary or better);
-- stat IDs are mapped to variants that can roll on the rule's items: a gear rule gains the slot's
-  variant (amulet: `S04_CoreStat_Willpower` + `X2_CoreStat_Willpower_Greater`) and keeps every listed
-  stat, since a unique's fixed stats are not in the slot pool and their matching is unverified; a
-  charm rule's gear stat is replaced by the charm stat;
+- stat IDs are mapped to the variant each slot rolls (amulet: `S04_CoreStat_Willpower` ->
+  `X2_CoreStat_Willpower_Greater`; charm rules: gear stat -> charm stat), and each slot then keeps
+  only stats it can roll, so nothing imports as invalid (a unique's fixed stats outside the slot's
+  pool are left out too; their in-game matching is unverified). Merged rules from the compiler
+  re-import without notes;
 - gear recolours adopt the shared gear colour; a mythics-only rule becomes the fixed Mythics rule,
   and a codex-upgrade rule the fixed Codex Upgrades rule (always first: recolour red).
 Rules that do not fit the slot model stay as raw rules, before or after the modelled rules as imported,
