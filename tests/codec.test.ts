@@ -5,9 +5,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { decode, encode, toJson } from "../src/codec";
+import { decode, encode, toJson } from "../src/codec.ts";
 
-const LF = join(__dirname, "..", "..", "Loot Filters");
+const LF = join(import.meta.dirname, "..", "..", "Loot Filters");
 const read = (f: string) => readFileSync(join(LF, f), "utf8");
 
 for (const f of ["strict_warlock_bs", "roa_very_strict_rogue"]) {

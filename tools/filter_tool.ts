@@ -1,15 +1,15 @@
 // Diablo 4 loot filter tool: convert between the in-game import string and editable JSON.
 //
 // Usage (from editor/):
-//   npx ts-node tools/filter_tool.ts decode <filter.txt> <filter.json>   import string -> JSON
-//   npx ts-node tools/filter_tool.ts encode <filter.json> <filter.txt>   JSON -> import string (validated)
-//   npx ts-node tools/filter_tool.ts check  <filter.txt>                 validate a string and list its rules
+//   npm run filter -- decode <filter.txt> <filter.json>   import string -> JSON
+//   npm run filter -- encode <filter.json> <filter.txt>   JSON -> import string (validated)
+//   npm run filter -- check  <filter.txt>                 validate a string and list its rules
 // Use "-" for a file to read stdin / write stdout (the summary then goes to stderr).
 //
 // Edit the JSON, never the base64 string. Encoding always re-validates by decoding the result
 // and comparing it with the JSON, so a string this tool writes is structurally sound.
 import { readFileSync, writeFileSync } from "fs";
-import { decode, encode, summary, toJson } from "../src/codec";
+import { decode, encode, summary, toJson } from "../src/codec.ts";
 
 const read = (p: string) => readFileSync(p === "-" ? 0 : p, "utf8");
 function write(p: string, s: string) {

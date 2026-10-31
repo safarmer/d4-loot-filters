@@ -5,13 +5,18 @@ stats (desired N-of, GA wanted, required) and a priority tier. Compile writes ru
 `No Ma'am` last, encodes through `tools/filter_tool.ts` (round-trip checked) and copies the string.
 
 ```
-npm install                 # once: typescript, ts-node
+npm install                 # once: @bufbuild/protobuf, typescript (type checking only)
+npm run typecheck           # tsc (TypeScript 7)
 python server.py            # http://127.0.0.1:8470
 npm test                    # codec golden tests against the working filters
 python -m unittest discover tests
 npm run filter -- check|decode|encode <in> [out]
 python tools/build_mapping.py <d4data>/json     # rebuild data/mapping.json
 ```
+
+TypeScript files run directly on Node 24+ (built-in type stripping), so there is no ts-node or build
+step. Keep to erasable syntax (no enums, namespaces or parameter properties) and import with `.ts`
+extensions; `tsc` enforces both. ts-node does not work with TypeScript 7 (no JavaScript compiler API).
 
 `src/codec.ts` is a port of the original `filter_tool.py`. Before that file was removed, both tools
 were checked to give byte-identical output on both filters, an editor-compiled filter, and error cases.
