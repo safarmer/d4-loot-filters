@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "filter": "node tools/filter_tool.ts",
-    "build-mapping": "node tools/build_mapping.ts"
+    "build-mapping": "node tools/build_mapping.ts",
+    "build:single": "vite build -c vite.single.config.ts && node tools/make_single.ts"
   },
   "author": "",
   "license": "ISC",

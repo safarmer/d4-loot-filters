@@ -14,6 +14,7 @@
       "vite/client"
     ],
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     "lib": [
       "esnext",
       "dom",
@@ -24,6 +25,7 @@
     "src",
     "tools",
     "tests",
-    "vite.config.ts"
+    "vite.config.ts",
+    "vite.single.config.ts"
   ]
 }

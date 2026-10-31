@@ -23,6 +23,8 @@ export function App() {
   const [notes, setNotes] = useState<string[]>([]);
   const [status, setStatus] = useState<{ msg: string; bad?: boolean }>({ msg: "" });
   const [paste, setPaste] = useState<string | null>(null);
+  // when the clipboard is refused (some embedded views), show the string to copy by hand
+  const [manual, setManual] = useState<{ name: string; text: string } | null>(null);
   const update: Update = (fn) => setModel((cur) => produce(cur, fn));
 
   function load(text: string) {
@@ -41,6 +43,7 @@ export function App() {
 
   async function compile(profile: ProfileName) {
     try {
+      setManual(null);
       const doc = compileModel(model, profile);
       // over the rule limit: refuse; other limit problems (an imported rule's unique count): warn
       if (doc.rules.length > MAX_RULES)
@@ -52,8 +55,8 @@ export function App() {
         await navigator.clipboard.writeText(text);
         setStatus({ msg: `${what}, copied to clipboard` });
       } catch {
-        window.prompt(`Copy the import string for ${doc.name}:`, text);
-        setStatus({ msg: what });
+        setManual({ name: doc.name ?? "filter", text });
+        setStatus({ msg: `${what}. The clipboard is blocked here: copy the string below.` });
       }
     } catch (e) {
       setStatus({ msg: (e as Error).message, bad: true });
@@ -92,6 +95,14 @@ export function App() {
         ))}
         <span id="status" className={status.bad ? "err" : "ok"}>{status.msg}</span>
       </header>
+      {manual && (
+        <div className="paste">
+          <label>Import string for {manual.name} (select all, copy):
+            <textarea readOnly value={manual.text} onFocus={(e) => e.currentTarget.select()} />
+          </label>
+          <button onClick={() => setManual(null)}>Close</button>
+        </div>
+      )}
       {paste !== null && (
         <div className="paste">
           <textarea placeholder="Paste an in-game import string" value={paste} onChange={(e) => setPaste(e.target.value)} />
