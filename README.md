@@ -74,11 +74,16 @@ npm install
 npm run dev                 # Vite dev server -> http://localhost:5173
 npm run build               # tsc type check + static site in dist/ (no server code)
 npm run preview             # serve dist/ to check the build
+npm run build:single         # one HTML file with everything inlined: dist-single/editor.html (used for the artifact)
 npm test                    # Vitest: codec golden tests + slot model tests
 npm run typecheck           # tsc (TypeScript 7, checks .ts and .tsx)
 npm run filter -- check|decode|encode <in> [out]   # command-line codec (Node)
 npm run build-mapping -- <d4data>/json             # offline: rebuild data/*.json (Node)
 ```
+
+The data files are imported into the JS bundle (no fetch), so `build:single` can fold the app, data
+and bundled filters into one HTML page fragment (about 1 MB). If the browser refuses clipboard writes
+(some embedded views), export shows the import string in a text box to copy by hand.
 
 `dist/` needs a static host (any web server, or `npm run preview`). Browsers do not load module
 scripts from `file://`, so opening `dist/index.html` directly does not work.
