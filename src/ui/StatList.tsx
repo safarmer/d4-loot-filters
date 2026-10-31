@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { mapping, STAT_GROUPS } from "../mapping.ts";
 
 /** Greater affix mark: a four-point star, filled when on. Drawn here, not copied from the game. */
@@ -32,6 +32,7 @@ interface Props {
 export function StatList({ valid, desired, onDesired, required = [], starred, onStar, nameOf = (l) => l }: Props) {
   const m = mapping();
   const [q, setQ] = useState("");
+  const uid = useId();
   const validSet = useMemo(() => new Set(valid), [valid]);
   const stats = useMemo(() => {
     const ids = [...new Set([...valid, ...required, ...desired])];
@@ -57,10 +58,9 @@ export function StatList({ valid, desired, onDesired, required = [], starred, on
             <div className="group-head">{group} <small>{list.length}</small></div>
             {list.map((a) => (
               <div key={a.id} className="affix" title={a.ok ? "" : "not valid here"}>
-                <label className="nm">
-                  <input type="checkbox" checked={desired.includes(a.id)} onChange={(e) => onDesired(a.id, e.target.checked)} />
-                  {" "}{a.name}{a.ok ? "" : " (invalid)"}{required.includes(a.id) ? " · required" : ""}
-                </label>
+                {/* checkbox, then the GA star, then the name (the name toggles the checkbox) */}
+                <input type="checkbox" id={`${uid}-${a.id}`} checked={desired.includes(a.id)}
+                  onChange={(e) => onDesired(a.id, e.target.checked)} />
                 {starred && onStar && (
                   <button className="star" aria-pressed={starred.includes(a.id)}
                     title="Greater affix wanted on this stat" aria-label={`Greater affix wanted: ${a.name}`}
@@ -68,6 +68,9 @@ export function StatList({ valid, desired, onDesired, required = [], starred, on
                     <GaStar on={starred.includes(a.id)} />
                   </button>
                 )}
+                <label className="nm" htmlFor={`${uid}-${a.id}`}>
+                  {a.name}{a.ok ? "" : " (invalid)"}{required.includes(a.id) ? " · required" : ""}
+                </label>
               </div>
             ))}
           </div>
