@@ -20,7 +20,7 @@ by rarity), so they keep a natural order: kept-as-is rules imported before any m
 charms, gear slots, kept-as-is rules imported after, `No Ma'am`. The Order list in the right column
 shows the end-game output.
 
-A slot turns on when its first item is picked (a unique, or "Legendaries count") and off when the
+A slot turns on when its first item is picked (a unique, or "Include Legendary") and off when the
 last is cleared; Charms do the same with wanted sets. Ticking stats alone does not change it, and the
 Enabled box still works by hand.
 

@@ -69,7 +69,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
       <fieldset>
         <legend>Gear</legend>
         <div className="row">
-          <label><input type="checkbox" checked={s.legendaries} onChange={(e) => edit((d) => { d.legendaries = e.target.checked; })} /> Legendaries count</label>
+          <label><input type="checkbox" checked={s.legendaries} onChange={(e) => edit((d) => { d.legendaries = e.target.checked; })} /> Include Legendary</label>
         </div>
         <div className="row">
           <label>Desired stats needed{" "}
