@@ -26,14 +26,14 @@ function UniqueCard({ id, at }: { id: number; at: DOMRect }) {
   );
 }
 
-/** A unique in a pick list: checkbox and name, with its details on hover or keyboard focus. */
+/** A unique in a pick list: checkbox and name (mythics in purple), with its details on hover or keyboard focus. */
 export function UniqueRow({ id, name, checked, disabled, onChange }: {
   id: number; name: string; checked: boolean; disabled: boolean; onChange: (on: boolean) => void;
 }) {
   const [at, setAt] = useState<DOMRect | null>(null);
   const show = (e: { currentTarget: HTMLElement }) => setAt(e.currentTarget.getBoundingClientRect());
   return (
-    <label onMouseEnter={show} onMouseLeave={() => setAt(null)} onFocus={show} onBlur={() => setAt(null)}>
+    <label className={mapping().uniques[id]?.mythic ? "mythic" : undefined} onMouseEnter={show} onMouseLeave={() => setAt(null)} onFocus={show} onBlur={() => setAt(null)}>
       <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       {name}
       {at && <UniqueCard id={id} at={at} />}

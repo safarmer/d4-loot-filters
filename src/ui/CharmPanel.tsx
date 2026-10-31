@@ -26,7 +26,7 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
     const ids = [...new Set([...classUniqueCharms(cls), ...c.uniques])];
     return ids.map((id) => {
       const u = m.uniques[id];
-      return { id, name: u ? (u.display ?? u.name) + (u.mythic ? " · mythic" : "") + (u.hidden ? ` · ${u.hidden}` : "") : `unverified ${id}` };
+      return { id, name: u ? (u.display ?? u.name) + (u.hidden ? ` · ${u.hidden}` : "") : `unverified ${id}` };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [cls, c.uniques]);
   const sets = useMemo(() => {

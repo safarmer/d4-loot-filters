@@ -1,4 +1,4 @@
-:root{color-scheme:dark;--unique:#c7a96a;--mythic:#b78bff}
+:root{color-scheme:dark;--unique:#c7a96a;--mythic:#9a62e0}
 :root{--ga:#ff9f1c;--bg:#14110f;--panel:#1e1a17;--line:#3a322b;--fg:#e8dfd0;--mut:#9a8f80;--acc:#00dcff;--bad:#ff6a5a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif}
@@ -59,3 +59,4 @@ textarea{width:100%;min-height:80px;background:var(--panel);color:var(--fg);bord
 .ucard{position:fixed;z-index:20;display:flex;flex-direction:column;gap:6px;background:#0f0d0b;border:1px solid var(--unique);border-radius:6px;padding:10px 12px;box-shadow:0 6px 24px #000a;pointer-events:none;font-size:13px}
 .ucard b{font-size:15px}.ucard .unique{color:var(--unique)}.ucard .mythic{color:var(--mythic)}
 .ucard p{margin:0}.ucard ul{margin:0;padding-left:16px;color:#8fb4ff}.ucard .flavor{color:var(--mut);font-style:italic}
+.list label.mythic{color:var(--mythic)}

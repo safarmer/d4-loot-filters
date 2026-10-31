@@ -51,7 +51,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
     for (const [, u] of picked) count.set(u.display ?? u.name, (count.get(u.display ?? u.name) ?? 0) + 1);
     const list = picked.map(([id, u]) => {
       const base = u.display ?? u.name;
-      const name = base + (count.get(base)! > 1 ? ` (${u.name})` : "") + (u.mythic ? " · mythic" : "")
+      const name = base + (count.get(base)! > 1 ? ` (${u.name})` : "")
         + (u.hidden ? ` · ${u.hidden}` : "");
       return { id: +id, name };
     });
