@@ -1,4 +1,7 @@
-// Filter JSON -> slot model, with warnings for anything that does not fit. An imported filter is read
+// Filter JSON -> slot model, with warnings for anything that does not fit. The import is an improved
+// presentation, not the source of truth (the saved filter is never changed), so rules are cleaned
+// to fit the editor where the intent is clear (cleanRule, shared gear colour, fixed Mythics and
+// catch-all rules), each change with a note. An imported filter is read
 // as an end-game filter: an ancestral recolour rule with a greater affix count sets the slot's desired
 // stats, n and ga; an ancestral show rule without one sets desired stats and n. The end-game compile
 // also adds the show rule an imported recolour-only slot lacks; `roundtrip` reports those as added.
@@ -99,6 +102,44 @@ function classify(rule: Rule, m: Mapping): ["uni" | "leg", string[]] | null {
   return null;
 }
 
+/**
+ * Cleans an imported rule to fit the editor where the meaning is clear; returns null to drop it.
+ * Each change adds a note. Only changes that cannot lose a wanted item, or that drop a rule the
+ * materials rule covers:
+ *  - "all unique charms" recolour (unique rarity + charm type, any extra property): dropped; the
+ *    materials rule shows those charms.
+ *  - charm-type uniques rule with gear uniques in it: the gear IDs never match a charm, dropped.
+ *  - legendary-slot rule with a greater-affix condition and a rarity mask with magic/rare bits:
+ *    greater affixes only roll on legendary or better, so the mask becomes legendary (8).
+ * (Also, in importFilter: a gear recolour rule in another colour adopts the shared gear colour.)
+ */
+function cleanRule(rule: Rule, m: Mapping, notes: string[]): Rule | null {
+  const r = structuredClone(rule);
+  const by = byType(r.conditions);
+  const itemTypes = by.get(5)?.ids ?? [];
+  const charmOnly = itemTypes.length > 0 && itemTypes.every((t) => t === m.charm_type || t === m.seal_type);
+  if (r.vis === 2 && charmOnly && by.get(1)?.value === UNIQUE_MASK && !by.has(8) && !by.has(6) && !by.has(9)
+    && r.conditions.every((c) => [1, 2, 5].includes(c.type as number))) {
+    notes.push(`${r.name}: dropped; the materials rule shows other unique charms`);
+    return null;
+  }
+  if (charmOnly && by.has(8)) {
+    const ids = by.get(8)!.ids ?? [];
+    const keep = ids.filter((i) => m.uniques[String(i)]?.slot === "charm");
+    if (keep.length && keep.length < ids.length) {
+      notes.push(`${r.name}: removed ${ids.length - keep.length} gear unique(s) a charm rule cannot match`);
+      by.get(8)!.ids = keep;
+    }
+  }
+  const rarity = by.get(1);
+  const slotTypes = itemTypes.length > 0 && itemTypes.every((t) => m.item_types[String(t)]?.slot);
+  if (rarity && slotTypes && by.has(4) && (rarity.value ?? 0) & 8 && (rarity.value ?? 0) & 6 && !((rarity.value ?? 0) & ~14)) {
+    notes.push(`${r.name}: rarity ${rarity.value} -> 8; greater affixes only roll on legendary or better`);
+    rarity.value = 8;
+  }
+  return r;
+}
+
 export function importFilter(doc: Filter): { model: Model; warnings: string[] } {
   const m = mapping();
   const warnings: string[] = [];
@@ -119,8 +160,11 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   let gearColor = false;                // model.colors.gear taken from an imported rule
   const charmKinds = new Set<string>();  // charm rules already modelled
 
-  doc.rules.forEach((rule, idx) => {
+  doc.rules.forEach((original, idx) => {
     if (idx === doc.rules.length - 1 && endsHidden) return; // No Ma'am: compiler appends it
+    const cleaned = cleanRule(original, m, warnings);
+    if (!cleaned) return;
+    const rule = cleaned;
     const keepRaw = (why: string | null) => {
       if (why) warnings.push(`${rule.name}: ${why}, kept as raw rule`);
       model.raw.push({ place: modelled ? "last" : "first", rule });
@@ -131,9 +175,11 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
     const types = rule.conditions.map((c) => `${c.type}:${c.value ?? ""}`).sort().join(",");
     if (rule.vis === 0 && (types === "2:4" || types === "2:4,4:2")) return;
 
-    // a plain "show mythics" rule: the compiler always adds one (last, before No Ma'am)
-    if (rule.vis === 0 && rule.conditions.length === 1 && rule.conditions[0].type === 1
-      && rule.conditions[0].value === MYTHIC_MASK) return;
+    // a "mythics only" rule (show or recolour): the compiler always adds one (last, before No Ma'am)
+    if (rule.conditions.length === 1 && rule.conditions[0].type === 1 && rule.conditions[0].value === MYTHIC_MASK) {
+      if (rule.vis !== 0) warnings.push(`${rule.name}: replaced by the fixed Mythics rule (show, last)`);
+      return;
+    }
 
     if (isMatsRule(rule, m)) {
       if (model.charms.mats) return keepRaw("materials rule already modelled");
@@ -208,8 +254,9 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (kind === "uni" && s.uniques.length && !deepEqual(s.uniques, idsFor(sk))) return keepRaw(`uniques differ from slot ${sk}'s other rule`);
       if (kind === "leg" && s.legendaries && s.leg_rarity !== by.get(1)!.value) return keepRaw(`rarity differs from slot ${sk}'s other rule`);
     }
-    // all gear recolours share one colour: the first imported one sets it
-    if (recolour && gearColor && rule.color !== model.colors.gear) return keepRaw("colour differs from the gear colour");
+    // all gear recolours share one colour: the first imported one sets it, later ones adopt it
+    if (recolour && gearColor && rule.color !== model.colors.gear)
+      warnings.push(`${rule.name}: colour ${rule.color} -> gear colour ${model.colors.gear}`);
 
     if (slots.length > 1) warnings.push(`${rule.name}: uniques span slots ${slots.join(", ")}; split into one rule per slot`);
     modelled = true;
@@ -222,7 +269,7 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (recolour) {
         s.ga = ga;
         s.ga_wanted = probe.ga_wanted;
-        model.colors.gear = rule.color;
+        if (!gearColor) model.colors.gear = rule.color;
         gearColor = true;
       }
       if (kind === "uni") s.uniques = idsFor(sk);
