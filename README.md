@@ -21,7 +21,9 @@ charms, gear slots, kept-as-is rules imported after, `No Ma'am`. The Order list 
 shows the end-game output.
 
 A slot turns on when its first item is picked (a unique, or "Include Legendary") and off when the
-last is cleared; Charms do the same with wanted sets. Ticking stats alone does not change it, and the
+last is cleared; Charms do the same with wanted sets. Ticking the first stat while no unique is picked turns
+"Include Legendary" on; picking the first unique turns it off. Both act only on that first pick, so
+the box can be changed by hand afterwards. Ticking stats alone does not change it, and the
 Enabled box still works by hand.
 
 All gear recolours share one colour. Charms (their own tile, below the gear) recolour set charms

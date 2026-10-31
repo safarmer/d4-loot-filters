@@ -32,7 +32,12 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
   const hasItems = (x: SlotConfig) => x.uniques.length > 0 || x.legendaries;
   const edit = (fn: (s: SlotConfig) => void) => update((d) => {
     const slot = d.slots[slotKey], had = hasItems(slot);
+    const hadStats = slot.desired.length > 0, hadUniques = slot.uniques.length > 0;
     fn(slot);
+    // first stat with no unique picked: include legendaries; first unique picked: leave them out
+    // (both only on that change, so the checkbox can still be set by hand afterwards)
+    if (!hadStats && slot.desired.length > 0 && !slot.uniques.length) slot.legendaries = true;
+    if (!hadUniques && slot.uniques.length > 0) slot.legendaries = false;
     if (hasItems(slot) !== had) slot.enabled = !had;
   });
 
