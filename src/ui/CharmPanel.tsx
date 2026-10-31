@@ -56,6 +56,10 @@ export function CharmPanel({ model, update }: { model: Model; update: Update }) 
             </tr>
           </tbody>
         </table>
+        <label className="setting">
+          <input type="checkbox" checked={c.mats} onChange={(e) => update((d) => { d.charms.mats = e.target.checked; })} />
+          Always show legendary-or-better charms and seals (materials), after the rules above
+        </label>
         <small>Charms roll their own stats (Talisman_Charm_…), not gear stats. Colours are in Settings.</small>
       </fieldset>
 

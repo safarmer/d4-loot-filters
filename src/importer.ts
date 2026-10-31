@@ -7,7 +7,7 @@
 // slot rules, so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, MATS_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
@@ -43,6 +43,13 @@ function affixParts(conds: Condition[], s: Probe, warn: string[], rname: string)
 
 function byType(conds: Condition[]): Map<number, Condition> {
   return new Map(conds.map((c) => [c.type as number, c]));
+}
+
+/** The materials rule: show legendary-or-better charms and seals. */
+function isMatsRule(rule: Rule, m: Mapping): boolean {
+  const by = byType(rule.conditions);
+  return !!rule.enabled && rule.vis === 0 && rule.conditions.length === 2 && by.get(1)?.value === MATS_MASK
+    && deepEqual([...(by.get(5)?.ids ?? [])].sort(), [m.charm_type, m.seal_type].sort());
 }
 
 /** Set-charm recolour rule: "set" (sets only) or "stats" (sets + an affix condition), else null. */
@@ -90,8 +97,8 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   let tier = 0;
   const last = doc.rules.at(-1);
   const endsHidden = !!last && last.vis === 3 && !last.conditions.length;
-  model.hide_rest.endgame = endsHidden;
 
+  model.charms.mats = false; // set again only if the filter has the materials rule
   let gearColor = false;                // model.colors.gear taken from an imported rule
   const charmKinds = new Set<string>();  // charm rules already modelled
 
@@ -102,6 +109,13 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       model.raw.push({ tier: tier + 0.5, rule });
     };
 
+    if (isMatsRule(rule, m)) {
+      if (model.charms.mats) return keepRaw("materials rule already modelled");
+      if (!model.charms.enabled) { tier += 1; model.charms.tier = tier; }
+      model.charms.mats = true;
+      return;
+    }
+
     const charm = classifyCharm(rule, m);
     if (charm) {
       const by = byType(rule.conditions);
@@ -110,6 +124,7 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (charmKinds.has(charm)) return keepRaw("charms already have this rule");
       if (c.enabled && !deepEqual(c.sets, sets)) return keepRaw("sets differ from the other charm rule");
       if ((by.get(6)?.ga_required_on ?? []).length) return keepRaw("charm GA-on-stat is not modelled");
+      if (model.charms.mats) return keepRaw("charm rule after the materials rule");
       if (!c.enabled) { tier += 1; Object.assign(c, { enabled: true, tier, sets: [...sets] }); }
       if (charm === "stats") { c.desired = [...(by.get(6)!.ids ?? [])]; c.n = by.get(6)!.value ?? 1; }
       model.colors[colorKey] = rule.color;

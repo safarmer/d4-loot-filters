@@ -51,7 +51,7 @@ test("rules come out in tier order", () => {
   const m = defaultModel("warlock");
   Object.assign(m.slots.boots, { enabled: true, tier: 2, legendaries: true });
   Object.assign(m.slots.helm, { enabled: true, tier: 1, legendaries: true });
-  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Leg", "Helm Leg OK", "Boots Leg", "Boots Leg OK", "No Ma'am"]);
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Charms/Seals for Mats", "Helm Leg", "Helm Leg OK", "Boots Leg", "Boots Leg OK", "No Ma'am"]);
 });
 
 test("valid stats depend on the slot", () => {
@@ -65,8 +65,14 @@ test("stat lists hold only rollable affixes, including every affix the working f
   for (const f of FILTERS)
     for (const r of load(f).rules)
       for (const c of r.conditions)
-        if (c.type === 6) for (const i of c.ids ?? [])
-          assert.ok(m.affixes[i].rollable && !m.affixes[i].hidden, `${f}: ${m.affixes[i].name}`);
+        if (c.type === 6) for (const i of c.ids ?? []) {
+          // set-charm rules (talisman set condition) take charm stats; gear rules take gear stats.
+          // The Rogue reference filter still has gear stats in its charm rule (left as is).
+          const charm = r.conditions.some((x) => x.type === 9);
+          const a = m.affixes[i];
+          if (charm && f === "roa_very_strict_rogue") continue;
+          assert.ok(charm ? a.charm_stat : a.rollable && !a.hidden, `${f}: ${a.name}`);
+        }
   const names = validAffixes("boots", "warlock").map((i) => m.affixes[i].name);
   assert.ok(names.includes("S04_Movement_Speed"));
   for (const bad of ["Movement_Speed", "Resistance_Single_Fire"]) assert.ok(!names.includes(bad), bad);
@@ -108,11 +114,12 @@ test("every shown stat has a known group", () => {
 
 test("starter and end-game filters from one model", () => {
   const m = defaultModel("warlock", "Warlock");
+  m.charms.mats = false;
   Object.assign(m.slots.helm, { enabled: true, uniques: [2647147], desired: [1829592, 1829586, 1829574], ga_wanted: [1829586], n: 2, ga: 1 });
   const starter = compileModel(m, "starter"), endgame = compileModel(m, "endgame");
   assert.equal(starter.name, "Warlock Starter");
   assert.equal(endgame.name, "Warlock");
-  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0]]);
+  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["No Ma'am", 3]]);
   assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["No Ma'am", 3]]);
   const types = (r: { conditions: { type: number | null }[] }) => r.conditions.map((c) => c.type).sort();
   const cond = (r: (typeof starter.rules)[0], t: number) => r.conditions.find((c) => c.type === t);
@@ -132,7 +139,7 @@ test("starter and end-game filters from one model", () => {
   assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Uni OK", "No Ma'am"]);
   // no desired stats: the starter only shows
   m.slots.helm.desired = []; m.slots.helm.ga_wanted = [];
-  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK"]);
+  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK", "No Ma'am"]);
 });
 
 test("charms: set+stats before set, own colours; gear shares one colour", () => {
@@ -142,13 +149,18 @@ test("charms: set+stats before set, own colours; gear shares one colour", () => 
   Object.assign(m.slots.boots, { enabled: true, legendaries: true });
   m.colors = { gear: "0xFF112233", charm_set: "0xFF445566", charm_stats: "0xFF778899" };
   const f = compileModel(m, "starter");
-  assert.deepEqual(f.rules.slice(0, 2).map((r) => [r.name, r.color]), [["Charm Set+Stats", "0xFF778899"], ["Charm Set", "0xFF445566"]]);
+  assert.deepEqual(f.rules.slice(0, 3).map((r) => [r.name, r.color]),
+    [["Charm Set+Stats", "0xFF778899"], ["Charm Set", "0xFF445566"], ["Charms/Seals for Mats", "0xFFFF0000"]]);
+  assert.deepEqual(f.rules[2].conditions.map((c) => [c.type, c.value ?? c.ids]), [[1, 120], [5, [2288901, 2326144]]]);
+  assert.equal(f.rules.at(-1)!.name, "No Ma'am");
   assert.deepEqual(f.rules[0].conditions.map((c) => c.type).sort(), [1, 5, 6, 9]);
   assert.ok(f.rules.filter((r) => r.vis === 2 && !r.name.startsWith("Charm")).every((r) => r.color === "0xFF112233"));
   encode(f);
   // the Warlock filter's set charm rules import as charms
   const { model } = roundtrip(load("strict_warlock_bs"));
   assert.deepEqual(model.charms.sets, [2340371, 2340376]);
+  assert.ok(model.charms.mats); // its Charms/Seals for Mats rule
+  assert.deepEqual(model.charms.desired, [2545972, 2545970, 2588359]); // Talisman_Charm_ stats
   assert.equal(model.colors.charm_set, "0xFFE89922");
   assert.ok(validCharmAffixes("warlock").includes(2545972)); // Talisman_Charm_SkillRankBonus_Warlock_Category_Hellfire
   assert.ok(!validCharmAffixes("warlock").includes(1829592)); // S04_Life is a gear stat

@@ -23,7 +23,8 @@ export function Doll({ model, sel, onSelect }: { model: Model; sel: string; onSe
           `tier ${s.tier} · ${s.uniques.length} uniques${s.legendaries ? " · legendaries" : ""}`);
       })}
       <hr className="doll-rule" />
-      {tile(CHARMS, "Charms", c.enabled, model.colors.charm_set, `tier ${c.tier} · ${c.sets.length} sets · ${c.desired.length} stats`)}
+      {tile(CHARMS, "Charms", c.enabled || c.mats, model.colors.charm_set,
+        c.enabled ? `tier ${c.tier} · ${c.sets.length} sets · ${c.desired.length} stats` : "materials only")}
     </section>
   );
 }
