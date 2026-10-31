@@ -59,7 +59,8 @@ const f32 = (f: number, v: number): Write => (w) => { w.tag(f, WireType.Bit32).f
 const raw = (f: number, b: Uint8Array): Write => (w) => { w.tag(f, WireType.LengthDelimited).bytes(b); };
 const all = (parts: Write[]): Write => (w) => parts.forEach((p) => p(w));
 
-const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
+const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+const unhex = (s: string) => Uint8Array.from(s.match(/../g) ?? [], (h) => parseInt(h, 16));
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 const num = (v: number | Uint8Array) => v as number;
 const bytes = (v: number | Uint8Array) => v as Uint8Array;
@@ -88,7 +89,7 @@ function encodeCond(c: Condition): Write {
   if (c.value !== undefined) out.push(vi(4, c.value));
   if (c.flag !== undefined) out.push(vi(6, c.flag));
   for (const [f, w, v] of c.extra ?? []) {
-    if (w === 2) out.push(raw(f, Buffer.from(v as string, "hex")));
+    if (w === 2) out.push(raw(f, unhex(v as string)));
     else if (w === 0) out.push(vi(f, v as number));
     else out.push(f32(f, v as number));
   }

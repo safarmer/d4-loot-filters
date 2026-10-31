@@ -2,26 +2,33 @@
   "name": "d4-slot-editor",
   "version": "1.0.0",
   "description": "Diablo 4 slot-based loot filter editor",
-  "directories": {
-    "test": "tests"
-  },
   "scripts": {
-    "filter": "node tools/filter_tool.ts",
-    "test": "node --test tests/*.test.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
-    "build-mapping": "node tools/build_mapping.ts",
-    "start": "node server.ts"
+    "filter": "node tools/filter_tool.ts",
+    "build-mapping": "node tools/build_mapping.ts"
   },
   "author": "",
   "license": "ISC",
   "type": "module",
   "devDependencies": {
     "@types/node": "26.6.6",
-    "typescript": "7.0.2"
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
   },
   "private": true,
   "dependencies": {
-    "@bufbuild/protobuf": "2.16.0"
+    "@bufbuild/protobuf": "2.16.0",
+    "immer": "11.2.9",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "engines": {
     "node": ">=24"

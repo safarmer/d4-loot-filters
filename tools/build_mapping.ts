@@ -10,7 +10,8 @@
 // Source: https://github.com/DiabloTools/d4data (extracted game files). Never game memory or network.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
-import { MAPPING_PATH, type AffixDef, type ItemTypeDef, type Mapping, type SlotDef, type UniqueDef } from "../src/mapping.ts";
+import type { AffixDef, ItemTypeDef, Mapping, SlotDef, UniqueDef } from "../src/mapping.ts";
+import { MAPPING_PATH } from "./node_mapping.ts";
 
 // d4data class order (index of fUsableByClass / fAllowedForPlayerClass). Checked against item
 // types: Bow->rogue(3), Scythe->necromancer(4), Glaive->spiritborn(5), Focus->sorc/necro/warlock.

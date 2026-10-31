@@ -10,13 +10,20 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "vite/client"
+    ],
+    "jsx": "react-jsx",
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable"
     ]
   },
   "include": [
     "src",
     "tools",
     "tests",
-    "server.ts"
+    "vite.config.ts"
   ]
 }

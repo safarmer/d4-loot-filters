@@ -22,3 +22,6 @@ fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:
 .muted,small{color:var(--mut)}ul,ol{padding-left:18px;margin:0}li{margin:2px 0}
 #status{margin-left:auto}.ok{color:#7fe08a}.err{color:var(--bad)}
 .sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:6px}
+
+textarea{width:100%;min-height:80px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:4px;font:12px ui-monospace,monospace}
+.paste{padding:8px 16px;border-bottom:1px solid var(--line)}

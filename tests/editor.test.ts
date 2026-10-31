@@ -1,6 +1,6 @@
-// Run: npm test
+// Run: npm test (Vitest)
 // Slot model: mapping coverage, import -> compile round trip, tier order, valid stats per slot.
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -8,6 +8,9 @@ import { decode, encode } from "../src/codec.ts";
 import { compileModel, defaultModel, validAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
 import { mapping } from "../src/mapping.ts";
+import { loadMapping } from "../tools/node_mapping.ts";
+
+loadMapping();
 
 const LF = join(import.meta.dirname, "..", "..", "Loot Filters");
 const load = (f: string) => decode(readFileSync(join(LF, f + ".txt"), "utf8"));

@@ -1,6 +1,5 @@
 // data/mapping.json: d4data SNO IDs -> names, slots, classes. Built by tools/build_mapping.ts.
-import { readFileSync } from "fs";
-import { join } from "path";
+// Browser-safe: the caller loads the JSON (fetch, import or fs) and passes it to setMapping().
 
 export interface SlotDef { label: string; item_types: number[]; labels: number[] }
 export interface ItemTypeDef { name: string; slot: string | null; classes: string[] }
@@ -24,10 +23,13 @@ export interface Mapping {
   seal_type: number;
 }
 
-export const MAPPING_PATH = join(import.meta.dirname, "..", "data", "mapping.json");
+let current: Mapping | null = null;
 
-let cached: Mapping | null = null;
+export function setMapping(m: Mapping): void {
+  current = m;
+}
+
 export function mapping(): Mapping {
-  cached ??= JSON.parse(readFileSync(MAPPING_PATH, "utf8")) as Mapping;
-  return cached;
+  if (!current) throw new Error("mapping not loaded: call setMapping() first");
+  return current;
 }

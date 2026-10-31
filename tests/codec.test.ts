@@ -1,7 +1,7 @@
-// Run: npm test
+// Run: npm test (Vitest)
 // Golden check: the working filters' .json encodes to their in-game .txt byte for byte.
 // Those .txt files were written by the original filter_tool.py and import in game.
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
