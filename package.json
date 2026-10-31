@@ -1,0 +1,22 @@
+{
+  "name": "d4-slot-editor",
+  "version": "1.0.0",
+  "description": "Diablo 4 slot-based loot filter editor",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "filter": "ts-node tools/filter_tool.ts",
+    "test": "node --require ts-node/register --test tests/codec.test.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "22.15.21",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3"
+  },
+  "private": true
+}

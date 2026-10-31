@@ -1,20 +1,25 @@
-"""Thin wrapper over ../Loot Filters/filter_tool.py (the single encoder/decoder).
+"""Thin wrapper over tools/filter_tool.ts (the single encoder/decoder), run with ts-node.
 
-filter_tool.encode re-decodes its own output and refuses a string that does not match.
+filter_tool.ts encode re-decodes its own output and refuses a string that does not match.
 """
-import importlib.util, os
+import json, os, subprocess
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-TOOL = os.environ.get("D4_FILTER_TOOL") or os.path.join(HERE, "..", "..", "Loot Filters", "filter_tool.py")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TS_NODE = os.path.join(ROOT, "node_modules", ".bin", "ts-node")
+TOOL = os.path.join(ROOT, "tools", "filter_tool.ts")
+ENV = dict(os.environ, TS_NODE_TRANSPILE_ONLY="1")
 
-_spec = importlib.util.spec_from_file_location("filter_tool", TOOL)
-filter_tool = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(filter_tool)
+
+def _run(cmd, data):
+    p = subprocess.run([TS_NODE, TOOL, cmd, "-", "-"], input=data, capture_output=True, text=True, cwd=ROOT, env=ENV)
+    if p.returncode:
+        raise ValueError(p.stderr.strip().removeprefix("ERROR: "))
+    return p.stdout
 
 
 def encode(doc):
-    return filter_tool.encode(doc)
+    return _run("encode", json.dumps(doc)).strip()
 
 
 def decode(text):
-    return filter_tool.decode(text)
+    return json.loads(_run("decode", text))

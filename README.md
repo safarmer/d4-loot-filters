@@ -2,13 +2,19 @@
 
 Character-sheet loot filter editor. Pick a class, click a paper-doll slot, set uniques, legendaries,
 stats (desired N-of, GA wanted, required) and a priority tier. Compile writes rules in tier order with
-`No Ma'am` last, encodes through `../Loot Filters/filter_tool.py` (round-trip checked) and copies the string.
+`No Ma'am` last, encodes through `tools/filter_tool.ts` (round-trip checked) and copies the string.
 
 ```
+npm install                 # once: typescript, ts-node
 python server.py            # http://127.0.0.1:8470
+npm test                    # codec golden tests against the working filters
 python -m unittest discover tests
+npm run filter -- check|decode|encode <in> [out]
 python tools/build_mapping.py <d4data>/json     # rebuild data/mapping.json
 ```
+
+`src/codec.ts` is a port of the original `filter_tool.py`. Before that file was removed, both tools
+were checked to give byte-identical output on both filters, an editor-compiled filter, and error cases.
 
 ## ID source (verified)
 Filter IDs are d4data SNO IDs: all 53 IDs in `strict_warlock_bs` resolve (affix group 104, item 73,
