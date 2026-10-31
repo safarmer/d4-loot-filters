@@ -10,7 +10,7 @@
 // (as imported), so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, MATS_MASK, MAX_UNIQUES, MYTHIC_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, MATS_MASK, MAX_UNIQUES, MYTHIC_MASK, SET_MASK, UNIQUE_MASK, validAffixes, validCharmAffixes, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
@@ -113,7 +113,63 @@ function classify(rule: Rule, m: Mapping): ["uni" | "leg", string[]] | null {
  *    greater affixes only roll on legendary or better, so the mask becomes legendary (8).
  * (Also, in importFilter: a gear recolour rule in another colour adopts the shared gear colour.)
  */
-function cleanRule(rule: Rule, m: Mapping, notes: string[]): Rule | null {
+/** Name shared by the variants of one stat: drops S04_/X2_ prefixes, a _Greater suffix and charm prefixes. */
+const statBase = (name: string) => name.replace(/^Talisman_Charm_(Affix_)?/, "").replace(/^(S\d+|X\d+)_/, "").replace(/_Greater$/, "");
+
+/**
+ * Affix IDs in a rule's stat conditions, mapped to IDs that can roll on the rule's items: for each
+ * gear slot the rule covers, a stat that cannot roll there gets the variant that can (e.g.
+ * S04_CoreStat_Willpower on an amulet -> X2_CoreStat_Willpower_Greater); in a charm rule a gear stat
+ * becomes the charm stat (X2_SkillRankBonus_…_Hellfire -> Talisman_Charm_SkillRankBonus_…_Hellfire).
+ * Gear rules only gain variants and keep every listed stat: a unique's fixed stats are not in the
+ * slot's random pool, and how the game matches them is unverified. A charm rule's gear stat is
+ * replaced by its charm variant (a charm never rolls gear stats). GA-on-stat pairs follow.
+ */
+function mapStats(r: Rule, m: Mapping, cls: string, notes: string[]): void {
+  const by = byType(r.conditions);
+  const itemTypes = by.get(5)?.ids ?? [];
+  const charm = by.has(9) || (itemTypes.length > 0 && itemTypes.every((t) => t === m.charm_type || t === m.seal_type));
+  const slots = charm ? [] : [...new Set([
+    ...(by.get(8)?.ids ?? []).map((i) => m.uniques[String(i)]?.slot),
+    ...itemTypes.map((t) => m.item_types[String(t)]?.slot ?? undefined),
+  ].filter((s): s is string => !!s && s !== "charm"))];
+  if (!charm && !slots.length) return;
+  const pools = charm ? [new Set(validCharmAffixes(cls))] : slots.map((k) => new Set(validAffixes(k, cls)));
+  const variantIn = (pool: Set<number>, id: number) => {
+    const b = statBase(m.affixes[id]?.name ?? "");
+    return b ? [...pool].find((v) => statBase(m.affixes[v].name) === b) : undefined;
+  };
+  const changes: string[] = [];
+  for (const c of r.conditions) {
+    if (c.type !== 6 || !c.ids) continue;
+    const out: number[] = [];
+    const swap = new Map<number, number>();
+    for (const id of c.ids) {
+      const validSomewhere = pools.some((p) => p.has(id));
+      const replaced = charm && !validSomewhere && pools.some((p) => variantIn(p, id) !== undefined);
+      if (!replaced && !out.includes(id)) out.push(id);
+      for (const p of pools) {
+        if (p.has(id)) continue;
+        const v = variantIn(p, id);
+        if (v !== undefined && !c.ids.includes(v) && !out.includes(v)) {
+          out.push(v);
+          if (replaced) swap.set(id, v);
+          changes.push(`${m.affixes[id]?.name ?? id} ${replaced ? "->" : "+"} ${m.affixes[v].name}`);
+        }
+      }
+    }
+    if (c.ga_required_on) {
+      const pairs = c.ga_required_on.map(([a]) => swap.get(a) ?? a).filter((a) => out.includes(a));
+      c.ga_required_on = pairs.map((a) => [a, a]);
+      if (!c.ga_required_on.length) delete c.ga_required_on;
+    }
+    c.ids = out;
+    if (c.value !== undefined) c.value = Math.min(c.value, out.length);
+  }
+  if (changes.length) notes.push(`${r.name}: stats mapped to variants that can roll (+ added, -> replaced): ${[...new Set(changes)].join("; ")}`);
+}
+
+function cleanRule(rule: Rule, m: Mapping, notes: string[], cls = "warlock"): Rule | null {
   const r = structuredClone(rule);
   const by = byType(r.conditions);
   const itemTypes = by.get(5)?.ids ?? [];
@@ -137,6 +193,7 @@ function cleanRule(rule: Rule, m: Mapping, notes: string[]): Rule | null {
       by.get(8)!.ids = keep;
     }
   }
+  mapStats(r, m, cls, notes);
   const rarity = by.get(1);
   const slotTypes = itemTypes.length > 0 && itemTypes.every((t) => m.item_types[String(t)]?.slot);
   if (rarity && slotTypes && by.has(4) && (rarity.value ?? 0) & 8 && (rarity.value ?? 0) & 6 && !((rarity.value ?? 0) & ~14)) {
@@ -168,7 +225,7 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
 
   doc.rules.forEach((original, idx) => {
     if (idx === doc.rules.length - 1 && endsHidden) return; // No Ma'am: compiler appends it
-    const cleaned = cleanRule(original, m, warnings);
+    const cleaned = cleanRule(original, m, warnings, cls!);
     if (!cleaned) return;
     const rule = cleaned;
     const keepRaw = (why: string | null) => {

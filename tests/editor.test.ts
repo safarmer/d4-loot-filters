@@ -252,6 +252,22 @@ test("unique power text shows value ranges in brackets", () => {
   assert.ok(!Object.values(u).some((x) => /\[-|NaN/.test(x.power ?? "")));
 });
 
+test("import maps stat IDs to the variants that can roll on the rule's items", () => {
+  const m = mapping();
+  const { model, warnings } = roundtrip(load("strict_warlock_bs"));
+  // amulet rolls the _Greater core stat and life; the plain IDs stay (unique fixed stats unverified)
+  for (const name of ["X2_CoreStat_Willpower_Greater", "X2_Life_Greater", "S04_CoreStat_Willpower"])
+    assert.ok(model.slots.amulet.desired.some((i) => m.affixes[i].name === name), name);
+  assert.ok(warnings.some((w) => /Amulet\/Ring Uni: stats mapped/.test(w)));
+  // a charm rule's gear stat becomes the charm stat (Rogue reference filter)
+  const rogue = roundtrip(load("roa_very_strict_rogue")).model.charms;
+  assert.ok(rogue.desired.some((i) => m.affixes[i].name === "Talisman_Charm_SkillRankBonus_Rogue_Category_Marksman"));
+  assert.ok(!rogue.desired.some((i) => m.affixes[i].name === "X2_SkillRankBonus_Rogue_Category_Marksman"));
+  // re-importing the export maps nothing more
+  const again = roundtrip(compileModel(model));
+  assert.ok(!again.warnings.some((w) => /stats mapped/.test(w)), again.warnings.join("; "));
+});
+
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
 });
