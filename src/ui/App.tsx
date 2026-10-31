@@ -4,8 +4,9 @@ import { decode, encode } from "../codec.ts";
 import { compileModel, defaultModel, PROFILES, type Model, type ProfileName } from "../compiler.ts";
 import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
-import { Doll } from "./Doll.tsx";
 import { SlotPanel } from "./SlotPanel.tsx";
+import { CharmPanel } from "./CharmPanel.tsx";
+import { CHARMS, Doll } from "./Doll.tsx";
 import { Side } from "./Side.tsx";
 
 // The owner's filters next to editor/, bundled as raw text at build time.
@@ -82,13 +83,7 @@ export function App() {
         </label>
         <button onClick={() => { setModel(defaultModel(model.class, model.name)); setNotes([]); }}>New</button>
         {PROFILES.map((p) => (
-          <span key={p} className="export">
-            <button className="primary" onClick={() => compile(p)}>Copy {p === "starter" ? "starter" : "end-game"}</button>
-            <label title="End the filter with No Ma'am, which hides everything the rules above do not match">
-              <input type="checkbox" checked={model.hide_rest[p]}
-                onChange={(e) => update((d) => { d.hide_rest[p] = e.target.checked; })} /> hide the rest
-            </label>
-          </span>
+          <button key={p} className="primary" onClick={() => compile(p)}>Copy {p === "starter" ? "starter" : "end-game"}</button>
         ))}
         <span id="status" className={status.bad ? "err" : "ok"}>{status.msg}</span>
       </header>
@@ -100,7 +95,9 @@ export function App() {
       )}
       <main>
         <Doll model={model} sel={sel} onSelect={setSel} />
-        <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />
+        {sel === CHARMS
+          ? <CharmPanel key={`${model.class}/charms`} model={model} update={update} />
+          : <SlotPanel key={`${model.class}/${sel}`} slotKey={sel} model={model} update={update} />}
         <Side model={model} notes={notes} update={update} />
       </main>
     </>

@@ -11,6 +11,18 @@ one "desired stats needed" count (n) and one "greater affixes to recolour" count
 | Starter | n desired stats (GA and ancestral ignored) | always | shown |
 | End-game | ancestral + n desired + ga greater affixes | ancestral + n desired | hidden (`No Ma'am`) |
 
+All gear recolours share one colour. Charms (their own tile, below the gear) recolour set charms
+of the wanted talisman sets in both filters: "Charm Set+Stats" (a wanted set with n desired charm
+stats) before "Charm Set" (any charm of a wanted set), each with its own colour. The three colours
+and the two "hide the rest" switches are global settings, in the collapsed Settings section at the
+top of the right column.
+
+Charms roll their own stats (`Talisman_Charm_*`, allowed on the Charm item label 71), not gear stats.
+The charm stat list shows those with magic type 0 that can roll on legendary charms
+(`dwAllowedQualityLevels` bit 8), minus `UNIQUE`/`TEST` ones: 55 for Warlock. The Warlock filter's
+"Skill Set Charms" rule uses gear stat IDs (`X2_SkillRankBonus_Warlock_Category_*`, `S04_Life`), so
+it probably never matches a charm (unverified); the editor marks them invalid in the charm list.
+
 With ga 0 the end-game filter has no recolour rule; with no desired stats the starter has none. A
 starred stat must be the greater affix in the end-game recolour (`ga_required_on`). Export encodes
 through `src/codec.ts` (round-trip checked) and copies the string. Imports are read as end-game

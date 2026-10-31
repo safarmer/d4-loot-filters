@@ -7,7 +7,7 @@
 // slot rules, so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, UNIQUE_MASK, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
@@ -43,6 +43,16 @@ function affixParts(conds: Condition[], s: Probe, warn: string[], rname: string)
 
 function byType(conds: Condition[]): Map<number, Condition> {
   return new Map(conds.map((c) => [c.type as number, c]));
+}
+
+/** Set-charm recolour rule: "set" (sets only) or "stats" (sets + an affix condition), else null. */
+function classifyCharm(rule: Rule, m: Mapping): "set" | "stats" | null {
+  const types = rule.conditions.map((c) => c.type as number);
+  if (!rule.enabled || rule.vis !== 2 || types.some((t) => ![1, 5, 6, 9].includes(t))) return null;
+  if ([1, 5, 6, 9].some((t) => types.filter((x) => x === t).length > 1)) return null;
+  const by = byType(rule.conditions);
+  if (by.get(1)?.value !== SET_MASK || !by.has(9) || !deepEqual(by.get(5)?.ids, [m.charm_type])) return null;
+  return by.has(6) ? "stats" : "set";
 }
 
 /** Returns [kind, slot keys] or null. */
@@ -82,12 +92,31 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   const endsHidden = !!last && last.vis === 3 && !last.conditions.length;
   model.hide_rest.endgame = endsHidden;
 
+  let gearColor = false;                // model.colors.gear taken from an imported rule
+  const charmKinds = new Set<string>();  // charm rules already modelled
+
   doc.rules.forEach((rule, idx) => {
     if (idx === doc.rules.length - 1 && endsHidden) return; // No Ma'am: compiler appends it
     const keepRaw = (why: string | null) => {
       if (why) warnings.push(`${rule.name}: ${why}, kept as raw rule`);
       model.raw.push({ tier: tier + 0.5, rule });
     };
+
+    const charm = classifyCharm(rule, m);
+    if (charm) {
+      const by = byType(rule.conditions);
+      const c = model.charms, sets = by.get(9)!.ids ?? [];
+      const colorKey = charm === "set" ? "charm_set" : "charm_stats";
+      if (charmKinds.has(charm)) return keepRaw("charms already have this rule");
+      if (c.enabled && !deepEqual(c.sets, sets)) return keepRaw("sets differ from the other charm rule");
+      if ((by.get(6)?.ga_required_on ?? []).length) return keepRaw("charm GA-on-stat is not modelled");
+      if (!c.enabled) { tier += 1; Object.assign(c, { enabled: true, tier, sets: [...sets] }); }
+      if (charm === "stats") { c.desired = [...(by.get(6)!.ids ?? [])]; c.n = by.get(6)!.value ?? 1; }
+      model.colors[colorKey] = rule.color;
+      charmKinds.add(charm);
+      return;
+    }
+
     const cl = classify(rule, m);
     if (cl === null) return keepRaw(null);
     const [kind, slots] = cl;
@@ -120,6 +149,8 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (kind === "uni" && s.uniques.length && !deepEqual(s.uniques, idsFor(sk))) return keepRaw(`uniques differ from slot ${sk}'s other rule`);
       if (kind === "leg" && s.legendaries && s.leg_rarity !== by.get(1)!.value) return keepRaw(`rarity differs from slot ${sk}'s other rule`);
     }
+    // all gear recolours share one colour: the first imported one sets it
+    if (recolour && gearColor && rule.color !== model.colors.gear) return keepRaw("colour differs from the gear colour");
 
     if (slots.length > 1) warnings.push(`${rule.name}: uniques span slots ${slots.join(", ")}; split into one rule per slot`);
     if (slots.some((sk) => !model.slots[sk].enabled)) tier += 1;
@@ -132,7 +163,8 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (recolour) {
         s.ga = ga;
         s.ga_wanted = probe.ga_wanted;
-        if (rule.color !== "0x00000000") s.color = rule.color;
+        model.colors.gear = rule.color;
+        gearColor = true;
       }
       if (kind === "uni") s.uniques = idsFor(sk);
       else { s.legendaries = true; s.leg_rarity = by.get(1)!.value as number; }

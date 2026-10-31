@@ -17,11 +17,14 @@ export interface AffixDef {
   tempered: boolean; magic_type: number;
   /** Can roll as a random stat on gear (see tools/build_mapping.ts). */
   rollable: boolean;
+  /** Can roll on legendary-or-better charms (Talisman_Charm_* affixes; see tools/build_mapping.ts). */
+  charm_stat?: boolean;
   /** Stat group for pickers, from eCategory and skill tags (see STAT_GROUPS). */
   group: string;
   /** Why stat pickers hide this rollable affix (e.g. a past season's stat). Absent = shown. */
   hidden?: string;
 }
+export interface TalismanSetDef { name: string; display: string | null; classes: string[] }
 export interface Mapping {
   source: string;
   /** d4data git commit the mapping was built from, when known. */
@@ -34,6 +37,10 @@ export interface Mapping {
   affixes: Record<string, AffixDef>;
   charm_type: number;
   seal_type: number;
+  /** Item labels of the Charm item type: affixes with one of these can roll on charms. */
+  charm_labels: number[];
+  /** Charm (talisman) set bonuses, the ids of filter condition type 9. */
+  talisman_sets: Record<string, TalismanSetDef>;
 }
 
 /** Stat groups in display order. */

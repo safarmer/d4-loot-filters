@@ -1,4 +1,7 @@
 {
+  "charm_labels": [
+    71
+  ],
   "charm_type": 2288901,
   "classes": [
     "sorcerer",
@@ -577,5 +580,357 @@
     }
   },
   "source": "DiabloTools/d4data json (files only)",
-  "source_commit": "75e619f0d90a0951945747f45feef59c076a5db0"
+  "source_commit": "75e619f0d90a0951945747f45feef59c076a5db0",
+  "talisman_sets": {
+    "2245344": {
+      "classes": [
+        "sorcerer"
+      ],
+      "display": "Breath of the Frozen Sea",
+      "name": "Talisman_Sorc_02"
+    },
+    "2245567": {
+      "classes": [
+        "sorcerer"
+      ],
+      "display": "Habacalva's Cauldron",
+      "name": "Talisman_Sorc_01"
+    },
+    "2248805": {
+      "classes": [
+        "sorcerer"
+      ],
+      "display": "Cain's Wild Lightning",
+      "name": "Talisman_Sorc_03"
+    },
+    "2248932": {
+      "classes": [
+        "sorcerer"
+      ],
+      "display": "Tal Rasha's Threefold Way",
+      "name": "Talisman_Sorc_04"
+    },
+    "2249013": {
+      "classes": [
+        "sorcerer"
+      ],
+      "display": "Tiraj's Uncanny Insight",
+      "name": "Talisman_Sorc_05"
+    },
+    "2292501": {
+      "classes": [
+        "barbarian"
+      ],
+      "display": "Sescheron's Fury",
+      "name": "Talisman_Barb_01"
+    },
+    "2292545": {
+      "classes": [
+        "barbarian"
+      ],
+      "display": "Berserker's Crucible",
+      "name": "Talisman_Barb_02"
+    },
+    "2292969": {
+      "classes": [
+        "barbarian"
+      ],
+      "display": "Arms of Arreat",
+      "name": "Talisman_Barb_03"
+    },
+    "2292971": {
+      "classes": [
+        "barbarian"
+      ],
+      "display": "Bloodletter's Flow",
+      "name": "Talisman_Barb_04"
+    },
+    "2292974": {
+      "classes": [
+        "barbarian"
+      ],
+      "display": "Bul-Kathos' Pride",
+      "name": "Talisman_Barb_05"
+    },
+    "2294566": {
+      "classes": [
+        "druid"
+      ],
+      "display": "Storm Shepherd's Call",
+      "name": "Talisman_Druid_01"
+    },
+    "2294656": {
+      "classes": [
+        "druid"
+      ],
+      "display": "Song of the Old Mountain",
+      "name": "Talisman_Druid_02"
+    },
+    "2294659": {
+      "classes": [
+        "druid"
+      ],
+      "display": "Might of the Den Mother",
+      "name": "Talisman_Druid_03"
+    },
+    "2294662": {
+      "classes": [
+        "druid"
+      ],
+      "display": "Rush of the Red Wolf Moon",
+      "name": "Talisman_Druid_04"
+    },
+    "2294665": {
+      "classes": [
+        "druid"
+      ],
+      "display": "Nafain's Bestiary",
+      "name": "Talisman_Druid_05"
+    },
+    "2296426": {
+      "classes": [
+        "rogue"
+      ],
+      "display": "Nilfur's Narrow Eye",
+      "name": "Talisman_Rogue_01"
+    },
+    "2296482": {
+      "classes": [
+        "rogue"
+      ],
+      "display": "Way of the Blurring Blade",
+      "name": "Talisman_Rogue_02"
+    },
+    "2296520": {
+      "classes": [
+        "rogue"
+      ],
+      "display": "Applied Alchemy",
+      "name": "Talisman_Rogue_03"
+    },
+    "2296522": {
+      "classes": [
+        "rogue"
+      ],
+      "display": "Spellbound Steel",
+      "name": "Talisman_Rogue_04"
+    },
+    "2296524": {
+      "classes": [
+        "rogue"
+      ],
+      "display": "Legacy of the Sightless",
+      "name": "Talisman_Rogue_05"
+    },
+    "2296936": {
+      "classes": [
+        "necromancer"
+      ],
+      "display": "Radament's Desecration",
+      "name": "Talisman_Necro_01"
+    },
+    "2297192": {
+      "classes": [
+        "necromancer"
+      ],
+      "display": "Art of the Bone Weaver",
+      "name": "Talisman_Necro_02"
+    },
+    "2297194": {
+      "classes": [
+        "necromancer"
+      ],
+      "display": "Word of the Blood Binder",
+      "name": "Talisman_Necro_03"
+    },
+    "2297196": {
+      "classes": [
+        "necromancer"
+      ],
+      "display": "Peace of the Black Shroud",
+      "name": "Talisman_Necro_04"
+    },
+    "2297198": {
+      "classes": [
+        "necromancer"
+      ],
+      "display": "Rathma's Waking Touch",
+      "name": "Talisman_Necro_05"
+    },
+    "2298770": {
+      "classes": [
+        "spiritborn"
+      ],
+      "display": "Balazan's Bite",
+      "name": "Talisman_Spirit_01"
+    },
+    "2299102": {
+      "classes": [
+        "spiritborn"
+      ],
+      "display": "Wumba's Embrace",
+      "name": "Talisman_Spirit_02"
+    },
+    "2299104": {
+      "classes": [
+        "spiritborn"
+      ],
+      "display": "Rezoka's Rage",
+      "name": "Talisman_Spirit_03"
+    },
+    "2299107": {
+      "classes": [
+        "spiritborn"
+      ],
+      "display": "Kwatli's Grace",
+      "name": "Talisman_Spirit_04"
+    },
+    "2299111": {
+      "classes": [
+        "spiritborn"
+      ],
+      "display": "Bliss of the Multitude",
+      "name": "Talisman_Spirit_05"
+    },
+    "2305930": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "display": "Slaughter",
+      "name": "Talisman_Small_Generic01"
+    },
+    "2306534": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "display": "Practiced Technique",
+      "name": "Talisman_Small_Generic02"
+    },
+    "2309267": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "display": "Survival",
+      "name": "Talisman_Small_Generic03"
+    },
+    "2314528": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "display": "Dark Pact",
+      "name": "Talisman_Small_Generic06"
+    },
+    "2316610": {
+      "classes": [
+        "sorcerer",
+        "druid",
+        "barbarian",
+        "rogue",
+        "necromancer",
+        "spiritborn",
+        "paladin",
+        "warlock"
+      ],
+      "display": "Mastery",
+      "name": "Talisman_Small_Generic09"
+    },
+    "2340043": {
+      "classes": [
+        "paladin"
+      ],
+      "display": "Cathan's Righteous Will",
+      "name": "Talisman_Pala_01"
+    },
+    "2340202": {
+      "classes": [
+        "paladin"
+      ],
+      "display": "Cathan's Dauntless Faith",
+      "name": "Talisman_Pala_02"
+    },
+    "2340204": {
+      "classes": [
+        "paladin"
+      ],
+      "display": "Heaven's Radiant Fire",
+      "name": "Talisman_Pala_03"
+    },
+    "2340206": {
+      "classes": [
+        "paladin"
+      ],
+      "display": "Light's Epiphany",
+      "name": "Talisman_Pala_04"
+    },
+    "2340208": {
+      "classes": [
+        "paladin"
+      ],
+      "display": "Cathan's Iron Conviction",
+      "name": "Talisman_Pala_05"
+    },
+    "2340368": {
+      "classes": [
+        "warlock"
+      ],
+      "display": "Fulcrum of Mefis",
+      "name": "Talisman_Warlock_01"
+    },
+    "2340371": {
+      "classes": [
+        "warlock"
+      ],
+      "display": "Flesh of Abaddon",
+      "name": "Talisman_Warlock_02"
+    },
+    "2340374": {
+      "classes": [
+        "warlock"
+      ],
+      "display": "Shadow of Harash",
+      "name": "Talisman_Warlock_03"
+    },
+    "2340376": {
+      "classes": [
+        "warlock"
+      ],
+      "display": "Rite of the Nameless",
+      "name": "Talisman_Warlock_04"
+    },
+    "2340378": {
+      "classes": [
+        "warlock"
+      ],
+      "display": "Chains of Horazon",
+      "name": "Talisman_Warlock_05"
+    }
+  }
 }

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { validAffixes, type Model, type SlotConfig } from "../compiler.ts";
-import { mapping, STAT_GROUPS } from "../mapping.ts";
+import { mapping } from "../mapping.ts";
 import type { Update } from "./App.tsx";
-import { css, slotColor } from "./colors.ts";
+import { StatList } from "./StatList.tsx";
 
 const range = (n: number) => Array.from({ length: n + 1 }, (_, i) => i);
 
@@ -22,22 +22,12 @@ function setGa(s: SlotConfig, id: number, on: boolean) {
   }
 }
 
-/** Greater affix mark: a four-point star, filled when on. Drawn here, not copied from the game. */
-function GaStar({ on }: { on: boolean }) {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-      <path d="M8 0.8 L9.9 6.1 L15.2 8 L9.9 9.9 L8 15.2 L6.1 9.9 L0.8 8 L6.1 6.1 Z"
-        fill={on ? "var(--ga)" : "none"} stroke={on ? "var(--ga)" : "var(--mut)"} strokeWidth="1.1" strokeLinejoin="round" />
-    </svg>
-  );
-}
 const has = (name: string, q: string) => name.toLowerCase().includes(q.toLowerCase());
 
 export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: Model; update: Update }) {
   const m = mapping();
   const def = m.slots[slotKey], s = model.slots[slotKey], cls = model.class;
   const [uq, setUq] = useState("");
-  const [aq, setAq] = useState("");
   const edit = (fn: (s: SlotConfig) => void) => update((d) => fn(d.slots[slotKey]));
 
   const uniques = useMemo(() => {
@@ -58,23 +48,7 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [slotKey, cls, s.uniques]);
 
-  const valid = useMemo(() => new Set(validAffixes(slotKey, cls)), [slotKey, cls]);
-  const stats = useMemo(() => {
-    const ids = [...new Set([...valid, ...s.required, ...s.desired])];
-    // several affixes share a label (e.g. pre-season-4 and S04_ versions): show the internal name too
-    const count = new Map<string, number>();
-    for (const id of ids) { const l = m.affixes[id]?.label; if (l) count.set(l, (count.get(l) ?? 0) + 1); }
-    return ids.map((id) => {
-      const a = m.affixes[id];
-      const name = !a ? `unverified ${id}` : count.get(a.label)! > 1 ? `${a.label} (${a.name})` : a.label;
-      return { id, name, ok: valid.has(id), group: a?.group ?? "Other" };
-    }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [valid, s.required, s.desired]);
-
-  // one list, a header per stat group (STAT_GROUPS order), empty groups left out
-  const shownStats = stats.filter((a) => has(a.name, aq));
-  const statGroups = STAT_GROUPS.map((g) => [g, shownStats.filter((a) => a.group === g)] as const)
-    .filter(([, list]) => list.length);
+  const valid = useMemo(() => validAffixes(slotKey, cls), [slotKey, cls]);
 
   return (
     <section id="panel">
@@ -88,11 +62,6 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          <label>Recolour{" "}
-            <input type="color" value={css(slotColor(s))}
-              onChange={(e) => edit((d) => { d.color = "0xFF" + e.target.value.slice(1).toUpperCase(); })} />
-          </label>
-          <button onClick={() => edit((d) => { d.color = null; })}>tier colour</button>
         </div>
       </fieldset>
 
@@ -158,28 +127,9 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
             </small>
           )}
         </div>
-        <input placeholder="filter stats…" size={20} value={aq} onChange={(e) => setAq(e.target.value)} />
-        <div className="list">
-          {statGroups.map(([group, list]) => (
-            <div key={group} role="group" aria-label={group}>
-              <div className="group-head">{group} <small>{list.length}</small></div>
-              {list.map((a) => (
-                <div key={a.id} className="affix" title={a.ok ? "" : "not valid for this slot"}>
-                  <label className="nm">
-                    <input type="checkbox" checked={s.desired.includes(a.id)}
-                      onChange={(e) => edit((d) => setDesired(d, a.id, e.target.checked))} />
-                    {" "}{a.name}{a.ok ? "" : " (invalid)"}{s.required.includes(a.id) ? " · required" : ""}
-                  </label>
-                  <button className="star" aria-pressed={s.ga_wanted.includes(a.id)}
-                    title="Greater affix wanted on this stat" aria-label={`Greater affix wanted: ${a.name}`}
-                    onClick={() => edit((d) => setGa(d, a.id, !d.ga_wanted.includes(a.id)))}>
-                    <GaStar on={s.ga_wanted.includes(a.id)} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        <StatList valid={valid} desired={s.desired} required={s.required} starred={s.ga_wanted}
+          onDesired={(id, on) => edit((d) => setDesired(d, id, on))}
+          onStar={(id, on) => edit((d) => setGa(d, id, on))} />
       </fieldset>
       </div>
     </section>

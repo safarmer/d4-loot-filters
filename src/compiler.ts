@@ -1,9 +1,13 @@
 // Slot model -> filter JSON (the structure tools/filter_tool.ts encodes).
 //
 // Model:
-//   {name, class, slot_idx, raw: [{tier, rule}], hide_rest: {starter, endgame}, slots: {slot_key: SlotConfig}}
+//   {name, class, slot_idx, raw: [{tier, rule}], hide_rest: {starter, endgame},
+//    colors: {gear, charm_set, charm_stats}, charms: CharmConfig, slots: {slot_key: SlotConfig}}
+// CharmConfig: enabled, tier, sets [talisman set ids], desired [charm stat ids], n
+//   Charm rules (same in both filters): "Charm Set+Stats" (set charm of a wanted set with n desired
+//   stats, charm_stats colour) before "Charm Set" (any set charm of a wanted set, charm_set colour).
 // SlotConfig:
-//   enabled, tier (lower = earlier), color (null = tier palette),
+//   enabled, tier (lower = earlier),
 //   uniques [ids], legendaries, leg_rarity (8),
 //   desired [affix ids], ga_wanted [affix ids, starred; also desired], required [affix ids, from imports],
 //   n: desired stats needed, ga: greater affixes needed to recolour in the end-game filter
@@ -12,13 +16,13 @@
 //   endgame  recolour: ancestral + n desired + ga greater affixes (starred stats must be the GA)
 //            show:     ancestral + n desired
 // The recolour rule comes first (first match wins). With ga 0 the end-game filter has no recolour rule.
+// All gear recolours use colors.gear.
 // By default the starter shows everything else; the end-game ends with `No Ma'am`. Rules come out in tier order.
 import type { Condition, Filter, Rule } from "./codec.ts";
 import { mapping } from "./mapping.ts";
 
-export const TIER_COLORS = ["0xFFFFE000", "0xFF3366FF", "0xFF00FFF4", "0xFFE89922", "0xFFE8229F",
-  "0xFF22E8CB", "0xFFD3E822", "0xFF4E8A20", "0xFFFFFFFF"];
 export const UNIQUE_MASK = 48; // unique + mythic
+export const SET_MASK = 64;
 const HIDE_ALL: Rule = { name: "No Ma'am", vis: 3, color: "0x00000000", enabled: 1, conditions: [] };
 
 export type ProfileName = "starter" | "endgame";
@@ -26,8 +30,14 @@ export const PROFILES: ProfileName[] = ["starter", "endgame"];
 /** Show rules carry this suffix; recolour rules use the plain slot label. */
 export const SHOW_SUFFIX = " OK";
 
+export interface Colors { gear: string; charm_set: string; charm_stats: string }
+/** Owner's colours: lemon yellow gear, orange set charms, yellow-green set charms with stats. */
+export const DEFAULT_COLORS: Colors = { gear: "0xFFFFE000", charm_set: "0xFFE89922", charm_stats: "0xFFD3E822" };
+
+export interface CharmConfig { enabled: boolean; tier: number; sets: number[]; desired: number[]; n: number }
+
 export interface SlotConfig {
-  enabled: boolean; tier: number; color: string | null;
+  enabled: boolean; tier: number;
   uniques: number[]; legendaries: boolean; leg_rarity: number;
   desired: number[]; ga_wanted: number[]; required: number[];
   n: number; ga: number;
@@ -36,12 +46,14 @@ export interface Model {
   name: string; class: string; slot_idx: number;
   raw: { tier: number; rule: Rule }[];
   hide_rest: Record<ProfileName, boolean>;
+  colors: Colors;
+  charms: CharmConfig;
   slots: Record<string, SlotConfig>;
 }
 
 export function defaultSlot(tier = 1): SlotConfig {
   return {
-    enabled: false, tier, color: null, uniques: [], legendaries: false, leg_rarity: 8,
+    enabled: false, tier, uniques: [], legendaries: false, leg_rarity: 8,
     desired: [], ga_wanted: [], required: [], n: 2, ga: 1,
   };
 }
@@ -49,7 +61,10 @@ export function defaultSlot(tier = 1): SlotConfig {
 export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   const slots: Record<string, SlotConfig> = {};
   Object.keys(mapping().slots).forEach((k, i) => { slots[k] = defaultSlot(i + 1); });
-  return { name, class: cls, slot_idx: 1, raw: [], hide_rest: { starter: false, endgame: true }, slots };
+  return {
+    name, class: cls, slot_idx: 1, raw: [], hide_rest: { starter: false, endgame: true },
+    colors: { ...DEFAULT_COLORS }, charms: { enabled: false, tier: 0, sets: [], desired: [], n: 1 }, slots,
+  };
 }
 
 export function slotItemTypes(slotKey: string, cls: string): number[] {
@@ -67,6 +82,35 @@ export function validAffixes(slotKey: string, cls: string): number[] {
     .filter(([, a]) => a.labels.some((l) => labels.has(l)) && a.classes.includes(cls) && a.rollable && !a.hidden)
     .map(([i]) => Number(i))
     .sort((a, b) => a - b);
+}
+
+/** Charm stats this class can roll on legendary-or-better charms. */
+export function validCharmAffixes(cls: string): number[] {
+  return Object.entries(mapping().affixes)
+    .filter(([, a]) => a.charm_stat && a.classes.includes(cls))
+    .map(([i]) => Number(i))
+    .sort((a, b) => a - b);
+}
+
+/** Talisman set ids for this class. */
+export function classSets(cls: string): number[] {
+  return Object.entries(mapping().talisman_sets).filter(([, t]) => t.classes.includes(cls)).map(([i]) => Number(i));
+}
+
+export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
+  if (!c.sets.length) return [];
+  const m = mapping();
+  const set: Condition[] = [
+    { type: 1, kind: "rarity", value: SET_MASK },
+    { type: 9, kind: "talisman_sets", ids: [...c.sets] },
+    { type: 5, kind: "item_types", ids: [m.charm_type] },
+  ];
+  const out: Rule[] = [];
+  if (c.desired.length && c.n > 0)
+    out.push({ name: "Charm Set+Stats", vis: 2, color: colors.charm_stats, enabled: 1, conditions: [
+      ...structuredClone(set), { type: 6, kind: "affixes", ids: [...c.desired], value: Math.min(c.n, c.desired.length) }] });
+  out.push({ name: "Charm Set", vis: 2, color: colors.charm_set, enabled: 1, conditions: structuredClone(set) });
+  return out;
 }
 
 /** Required stats, then "n of the desired stats". With withGa, starred stats must be the greater affix. */
@@ -98,8 +142,8 @@ function levels(s: SlotConfig, profile: ProfileName): [Condition[] | null, Condi
   return [recolour, show];
 }
 
-export function slotRules(key: string, s: SlotConfig, cls: string, label: string, profile: ProfileName = "endgame"): Rule[] {
-  const color = s.color || TIER_COLORS[Math.min(s.tier, TIER_COLORS.length) - 1];
+export function slotRules(key: string, s: SlotConfig, cls: string, label: string, profile: ProfileName = "endgame",
+  color = DEFAULT_COLORS.gear): Rule[] {
   const kinds: [string, Condition, Condition][] = [];
   if (s.uniques.length)
     kinds.push([`${label} Uni`, { type: 1, kind: "rarity", value: UNIQUE_MASK }, { type: 8, kind: "uniques", ids: [...s.uniques] }]);
@@ -119,18 +163,17 @@ export function slotRules(key: string, s: SlotConfig, cls: string, label: string
 export function compileModel(model: Model, profile: ProfileName = "endgame"): Filter {
   const m = mapping();
   const order = Object.keys(m.slots);
-  type Item = [number, number, number, string | null, SlotConfig | Rule];
+  // [tier, kind order (raw, charms, slot), index, rules]
+  type Item = [number, number, number, () => Rule[]];
   const items: Item[] = [
     ...Object.entries(model.slots).filter(([, s]) => s.enabled)
-      .map(([k, s]): Item => [s.tier, 1, order.indexOf(k), k, s]),
-    ...model.raw.map((r, i): Item => [r.tier, 0, i, null, r.rule]),
+      .map(([k, s]): Item => [s.tier, 2, order.indexOf(k),
+        () => slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear)]),
+    ...model.raw.map((r, i): Item => [r.tier, 0, i, () => [r.rule]]),
   ];
+  if (model.charms.enabled) items.push([model.charms.tier, 1, 0, () => charmRules(model.charms, model.colors)]);
   items.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-  const rules: Rule[] = [];
-  for (const [, , , k, s] of items) {
-    if (k === null) rules.push(s as Rule);
-    else rules.push(...slotRules(k, s as SlotConfig, model.class, m.slots[k].label.replace(" (x2)", ""), profile));
-  }
+  const rules: Rule[] = items.flatMap(([, , , make]) => make());
   if (model.hide_rest[profile]) rules.push({ ...HIDE_ALL });
   const cid = m.filter_class_id[model.class];
   if (cid === undefined)

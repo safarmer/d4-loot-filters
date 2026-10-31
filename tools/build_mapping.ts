@@ -6,12 +6,13 @@
 //   base/meta/ItemType/*.itt.json   slot -> item type id, item labels
 //   base/meta/Item/*.itm.json       unique items (type, class, forced affixes)
 //   base/meta/Affix/*.aff.json      affix labels (which slots it can roll on), classes
+//   base/meta/SetItemBonus/*.set.json  charm (talisman) sets
 //   enUS_Text/meta/StringList/      display names
 // Source: https://github.com/DiabloTools/d4data (extracted game files). Never game memory or network.
 import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { MAPPING_FILES, type AffixDef, type ItemTypeDef, type MappingMeta, type SlotDef, type UniqueDef } from "../src/mapping.ts";
+import { MAPPING_FILES, type AffixDef, type ItemTypeDef, type MappingMeta, type SlotDef, type TalismanSetDef, type UniqueDef } from "../src/mapping.ts";
 import { DATA_DIR } from "./node_mapping.ts";
 
 // d4data class order (index of fUsableByClass / fAllowedForPlayerClass). Checked against item
@@ -80,6 +81,16 @@ function statGroup(d: any): string {
   if (tags.some((t) => t === "Affix_CoreStat" || t === "Affix_FlatCoreStat")) return "Core stats";
   if (tags.some((t) => t.startsWith("Affix_Resistance"))) return "Resistances";
   return CATEGORY[d.eCategory] ?? "Other";
+}
+
+// Charm stats: affixes allowed on the Charm item label, magic type 0 (not a legendary power), able to
+// roll on legendary items (dwAllowedQualityLevels bit 8; magic-only charm stats lack it), and not
+// unique-charm-only. Charms do not roll gear stats: a charm's life stat is Talisman_Charm_Affix_Life,
+// not S04_Life.
+const LEGENDARY_QUALITY = 8;
+function charmStat(name: string, d: any, charmLabels: number[]): boolean {
+  return d.arAllowedItemLabels.some((l: number) => charmLabels.includes(l)) && d.eMagicType === 0
+    && (d.dwAllowedQualityLevels & LEGENDARY_QUALITY) !== 0 && !/UNIQUE|TEST/i.test(name);
 }
 
 const load = (p: string): any => JSON.parse(readFileSync(p, "utf8"));
@@ -187,6 +198,7 @@ for (const u of Object.values(uniques)) {
   if (!u.hidden && isCopy(u) && firstSeen.get(nameKey(u))! < seasonOf(u.name)) u.hidden = `Season ${seasonOf(u.name)} copy`;
 }
 
+const charmLabels: number[] = itypes.get("Charm")?.arItemLabels ?? [];
 const affixes: Record<string, AffixDef> = {};
 for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
   const d = load(p);
@@ -199,8 +211,22 @@ for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
     name, label: pretty(name), labels: [...d.arAllowedItemLabels].sort((a: number, b: number) => a - b),
     classes: classes(d.fAllowedForPlayerClass), tempered: Boolean(d.bIsTemperedAffix), magic_type: d.eMagicType,
     rollable: rolls, group: statGroup(d),
+    ...(charmStat(name, d, charmLabels) ? { charm_stat: true } : {}),
     ...(hidden ? { hidden } : {}),
   };
+}
+
+// Charm sets: Talisman_<Class>_NN; Talisman_Small_Generic* fit every class.
+const SET_CLASS: Record<string, string> = {
+  Barb: "barbarian", Druid: "druid", Necro: "necromancer", Pala: "paladin", Rogue: "rogue",
+  Sorc: "sorcerer", Spirit: "spiritborn", Warlock: "warlock",
+};
+const talismanSets: Record<string, TalismanSetDef> = {};
+for (const [name, p] of files(join(meta, "SetItemBonus"), ".set.json")) {
+  if (!name.startsWith("Talisman_")) continue;
+  const d = load(p);
+  const cls = SET_CLASS[name.split("_")[1]];
+  talismanSets[d.__snoID__] = { name, display: display(strings, "SetItemBonus", name), classes: cls ? [cls] : CLASSES };
 }
 
 const mappingMeta: MappingMeta = {
@@ -208,6 +234,8 @@ const mappingMeta: MappingMeta = {
   ...(gitCommit(root) ? { source_commit: gitCommit(root) } : {}),
   classes: CLASSES, filter_class_id: FILTER_CLASS_ID, slots, item_types: itemTypes,
   charm_type: CHARM_TYPE, seal_type: SEAL_TYPE,
+  charm_labels: [...(itypes.get("Charm")?.arItemLabels ?? [])].sort((a: number, b: number) => a - b),
+  talisman_sets: talismanSets,
 };
 mkdirSync(out, { recursive: true });
 writeFileSync(join(out, MAPPING_FILES.meta), JSON.stringify(sortKeys(mappingMeta), null, 2) + "\n");

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { decode, encode } from "../src/codec.ts";
-import { compileModel, defaultModel, validAffixes } from "../src/compiler.ts";
+import { compileModel, defaultModel, validAffixes, validCharmAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
 import { mapping, STAT_GROUPS } from "../src/mapping.ts";
 import { loadMapping } from "../tools/node_mapping.ts";
@@ -40,10 +40,11 @@ test("warlock: only the rules split per slot differ", () => {
     new Set(["lost or changed: Weapon Good GA Uni", "lost or changed: Jewelry Good GA Uni"]));
 });
 
-test("rogue: round trip loses no rule (its RoA Uniques show rule splits per slot)", () => {
+test("rogue: round trip loses no rule (RoA Uniques splits per slot)", () => {
   const { diffs } = roundtrip(load("roa_very_strict_rogue"));
   assert.deepEqual(diffs.filter((d) => d.startsWith("lost")), ["lost or changed: Rogue RoA Uniques"]);
-  assert.ok(diffs.filter((d) => d.startsWith("added")).every((d) => d.endsWith(" Uni OK")));
+  // added: per-slot show rules, and the set-only charm rule its set+stats charm rule lacked
+  assert.ok(diffs.filter((d) => d.startsWith("added")).every((d) => d.endsWith(" Uni OK") || d === "added: Charm Set"));
 });
 
 test("rules come out in tier order", () => {
@@ -132,6 +133,25 @@ test("starter and end-game filters from one model", () => {
   // no desired stats: the starter only shows
   m.slots.helm.desired = []; m.slots.helm.ga_wanted = [];
   assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK"]);
+});
+
+test("charms: set+stats before set, own colours; gear shares one colour", () => {
+  const m = defaultModel("warlock", "W");
+  Object.assign(m.charms, { enabled: true, tier: 0, sets: [2340371], desired: [2545972, 2545970], n: 1 });
+  Object.assign(m.slots.helm, { enabled: true, uniques: [2647147] });
+  Object.assign(m.slots.boots, { enabled: true, legendaries: true });
+  m.colors = { gear: "0xFF112233", charm_set: "0xFF445566", charm_stats: "0xFF778899" };
+  const f = compileModel(m, "starter");
+  assert.deepEqual(f.rules.slice(0, 2).map((r) => [r.name, r.color]), [["Charm Set+Stats", "0xFF778899"], ["Charm Set", "0xFF445566"]]);
+  assert.deepEqual(f.rules[0].conditions.map((c) => c.type).sort(), [1, 5, 6, 9]);
+  assert.ok(f.rules.filter((r) => r.vis === 2 && !r.name.startsWith("Charm")).every((r) => r.color === "0xFF112233"));
+  encode(f);
+  // the Warlock filter's set charm rules import as charms
+  const { model } = roundtrip(load("strict_warlock_bs"));
+  assert.deepEqual(model.charms.sets, [2340371, 2340376]);
+  assert.equal(model.colors.charm_set, "0xFFE89922");
+  assert.ok(validCharmAffixes("warlock").includes(2545972)); // Talisman_Charm_SkillRankBonus_Warlock_Category_Hellfire
+  assert.ok(!validCharmAffixes("warlock").includes(1829592)); // S04_Life is a gear stat
 });
 
 test("unverified class id refuses to compile", () => {
