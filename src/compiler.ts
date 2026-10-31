@@ -19,6 +19,9 @@
 //            show:     ancestral + n desired
 // The recolour rule comes first (first match wins). With ga 0 the end-game filter has no recolour rule.
 // All gear recolours use colors.gear.
+// Gear rules merge across slots where that cannot change what matches (see gearRules), and
+// starter gets "All Ancestral" (on) / end-game "Any 2GA+ Ancestral" (off) before Mythics, for
+// toggling in game. Limits: MAX_RULES rules, MAX_UNIQUES uniques per rule (checkLimits).
 // Rule order is fixed, not chosen. A rule sits above another only where that changes what matches
 // (first match wins): inside a section, strong recolour (much better) before recolour before show,
 // since they cover the same items. Sections cover different items (charms vs each gear slot;
@@ -132,64 +135,145 @@ export function charmRules(c: CharmConfig, colors: Colors): Rule[] {
   return [...out, ...mats];
 }
 
-/** Required stats, then "n of the desired stats". With withGa, starred stats must be the greater affix. */
-function affixConditions(s: SlotConfig, withGa: boolean): Condition[] {
+/** Owner's limits: rules per filter, uniques per uniques condition (stats: no known limit). */
+export const MAX_RULES = 25;
+export const MAX_UNIQUES = 10;
+
+const ANCESTRAL: Condition = { type: 2, kind: "property", value: 4 };
+const gaCondition = (ga: number): Condition => ({ type: 4, kind: "greater_affixes", value: ga, flag: 1 });
+/** Catch-all rules before Mythics, for toggling in game: starter on, end-game off. */
+const ALL_ANCESTRAL: Rule = { name: "All Ancestral", vis: 0, color: "0xFF22E8CB", enabled: 1, conditions: [{ ...ANCESTRAL }] };
+const ANY_2GA_ANCESTRAL: Rule = { name: "Any 2GA+ Ancestral", vis: 0, color: "0xFF22E8CB", enabled: 0,
+  conditions: [gaCondition(2), { ...ANCESTRAL }] };
+
+type LevelName = "recolour" | "show";
+/** One level's conditions for a slot, apart from rarity and items. */
+interface Spec { ancestral: boolean; ga: number; n: number; desired: number[]; pairs: number[]; required: number[] }
+
+/** The slot's recolour and show specs for a profile (null = no such rule). */
+function specs(s: SlotConfig, profile: ProfileName): Record<LevelName, Spec | null> {
+  const desired = [...s.desired];
+  for (const g of s.ga_wanted) if (!desired.includes(g)) desired.push(g);
+  const n = desired.length ? s.n : 0;
+  const base = { required: [...s.required], desired: n ? desired : [], n, pairs: [] as number[] };
+  if (profile === "starter")
+    return { recolour: n || s.required.length ? { ...base, ancestral: false, ga: 0 } : null, show: { ...base, ancestral: false, ga: 0, n: 0, desired: [], required: [] } };
+  return {
+    recolour: s.ga > 0 ? { ...base, ancestral: true, ga: s.ga, pairs: n ? [...s.ga_wanted] : [] } : null,
+    show: { ...base, ancestral: true, ga: 0 },
+  };
+}
+
+function specConditions(p: Spec): Condition[] {
   const conds: Condition[] = [];
-  if (s.required.length)
-    conds.push({ type: 6, kind: "affixes", ids: [...s.required], value: s.required.length });
-  const ids = [...s.desired];
-  for (const g of s.ga_wanted) if (!ids.includes(g)) ids.push(g);
-  if (ids.length && s.n > 0) {
-    const c: Condition = { type: 6, kind: "affixes", ids, value: Math.min(s.n, ids.length) };
-    if (withGa && s.ga_wanted.length) c.ga_required_on = s.ga_wanted.map((g) => [g, g]);
+  if (p.ancestral) conds.push({ ...ANCESTRAL });
+  if (p.ga > 0) conds.push(gaCondition(p.ga));
+  if (p.required.length) conds.push({ type: 6, kind: "affixes", ids: [...p.required], value: p.required.length });
+  if (p.n > 0) {
+    const c: Condition = { type: 6, kind: "affixes", ids: [...p.desired], value: Math.min(p.n, p.desired.length) };
+    if (p.pairs.length) c.ga_required_on = p.pairs.map((g) => [g, g]);
     conds.push(c);
   }
   return conds;
 }
 
-const ANCESTRAL: Condition = { type: 2, kind: "property", value: 4 };
-const gaCondition = (ga: number): Condition => ({ type: 4, kind: "greater_affixes", value: ga, flag: 1 });
+const same = (a: number[], b: number[]) => a.length === b.length && [...a].sort().every((x, i) => x === [...b].sort()[i]);
 
-/** [recolour conditions or null, show conditions] for one profile, between the rarity and item conditions. */
-function levels(s: SlotConfig, profile: ProfileName): [Condition[] | null, Condition[]] {
-  if (profile === "starter") {
-    const stats = affixConditions(s, false);
-    return [stats.length ? stats : null, []];
+interface Group { kind: "uni" | "leg"; level: LevelName; spec: Spec; slots: string[]; rarity: number }
+
+/**
+ * Gear rules with slots merged where that cannot change what matches: same kind, level, ancestral,
+ * GA count, required stats, starred stats and stat count, and the combined stat list only adds, for
+ * each slot, stats that cannot roll on that slot. Uniques go in rules of at most MAX_UNIQUES.
+ * Order: all recolour rules, then all show rules (each slot's recolour still comes before its show).
+ */
+export function gearRules(model: Model, profile: ProfileName = "endgame"): { section: string; rule: Rule }[] {
+  const m = mapping();
+  const valid = new Map<string, Set<number>>();
+  const validFor = (k: string) => {
+    if (!valid.has(k)) valid.set(k, new Set(validAffixes(k, model.class)));
+    return valid.get(k)!;
+  };
+  const groups: Group[] = [];
+  const own = new Map<string, Spec>(); // `${level}/${slot}` -> the slot's own spec
+  for (const level of ["recolour", "show"] as LevelName[])
+    for (const [k, s] of Object.entries(model.slots)) {
+      if (!s.enabled) continue;
+      const spec = specs(s, profile)[level];
+      if (!spec) continue;
+      own.set(`${level}/${k}`, spec);
+      for (const kind of ["uni", "leg"] as const) {
+        if (kind === "uni" ? !s.uniques.length : !s.legendaries) continue;
+        const rarity = kind === "uni" ? UNIQUE_MASK : s.leg_rarity;
+        const fits = (g: Group) => {
+          if (g.kind !== kind || g.level !== level || g.rarity !== rarity) return false;
+          const a = g.spec;
+          if (a.ancestral !== spec.ancestral || a.ga !== spec.ga || a.n !== spec.n
+            || !same(a.required, spec.required) || !same(a.pairs, spec.pairs)) return false;
+          const union = [...new Set([...a.desired, ...spec.desired])];
+          // each slot's stat count and its rollable stats must stay the same
+          for (const slot of [...g.slots, k]) {
+            const mine = slot === k ? spec : own.get(`${level}/${slot}`)!;
+            if (Math.min(mine.n, mine.desired.length) !== Math.min(mine.n, union.length)) return false;
+            if (union.some((id) => !mine.desired.includes(id) && validFor(slot).has(id))) return false;
+          }
+          return true;
+        };
+        const g = groups.find(fits);
+        if (g) {
+          g.slots.push(k);
+          g.spec = { ...g.spec, desired: [...new Set([...g.spec.desired, ...spec.desired])] };
+        } else groups.push({ kind, level, spec: { ...spec }, slots: [k], rarity });
+      }
+    }
+
+  const label = (k: string) => m.slots[k].label.replace(" (x2)", "");
+  const out: { section: string; rule: Rule }[] = [];
+  for (const g of groups) {
+    const names = g.slots.map(label);
+    const who = names.length <= 2 ? names.join("/") : "Gear";
+    const suffix = g.level === "show" ? SHOW_SUFFIX : "";
+    const vis = g.level === "recolour" ? 2 : 0;
+    const conds = specConditions(g.spec);
+    const rule = (name: string, items: Condition): Rule => ({ name, vis, color: model.colors.gear, enabled: 1,
+      conditions: [{ type: 1, kind: "rarity", value: g.rarity }, ...structuredClone(conds), items] });
+    if (g.kind === "uni") {
+      const ids = g.slots.flatMap((k) => model.slots[k].uniques);
+      const chunks = Math.ceil(ids.length / MAX_UNIQUES);
+      for (let i = 0; i < chunks; i++)
+        out.push({ section: names.join(", "), rule: rule(`${who} Uni${chunks > 1 ? ` ${i + 1}` : ""}${suffix}`,
+          { type: 8, kind: "uniques", ids: ids.slice(i * MAX_UNIQUES, (i + 1) * MAX_UNIQUES) }) });
+    } else {
+      const types = [...new Set(g.slots.flatMap((k) => slotItemTypes(k, model.class)))];
+      out.push({ section: names.join(", "), rule: rule(`${who} Leg${suffix}`, { type: 5, kind: "item_types", ids: types }) });
+    }
   }
-  const show = [{ ...ANCESTRAL }, ...affixConditions(s, false)];
-  const recolour = s.ga > 0 ? [{ ...ANCESTRAL }, gaCondition(s.ga), ...affixConditions(s, true)] : null;
-  return [recolour, show];
-}
-
-export function slotRules(key: string, s: SlotConfig, cls: string, label: string, profile: ProfileName = "endgame",
-  color = DEFAULT_COLORS.gear): Rule[] {
-  const kinds: [string, Condition, Condition][] = [];
-  if (s.uniques.length)
-    kinds.push([`${label} Uni`, { type: 1, kind: "rarity", value: UNIQUE_MASK }, { type: 8, kind: "uniques", ids: [...s.uniques] }]);
-  if (s.legendaries)
-    kinds.push([`${label} Leg`, { type: 1, kind: "rarity", value: s.leg_rarity }, { type: 5, kind: "item_types", ids: slotItemTypes(key, cls) }]);
-  const [recolour, show] = levels(s, profile);
-  const out: Rule[] = [];
-  if (recolour)
-    for (const [name, rarity, items] of kinds)
-      out.push({ name, vis: 2, color, enabled: 1, conditions: [{ ...rarity }, ...structuredClone(recolour), { ...items }] });
-  for (const [name, rarity, items] of kinds)
-    out.push({ name: name + SHOW_SUFFIX, vis: 0, color, enabled: 1, conditions: [{ ...rarity }, ...structuredClone(show), { ...items }] });
   return out;
 }
 
 /** Rules for one profile in output order, without `No Ma'am`, each with the section it comes from. */
 export function orderedRules(model: Model, profile: ProfileName = "endgame"): { section: string; rule: Rule }[] {
-  const m = mapping();
   const out: { section: string; rule: Rule }[] = [];
   const add = (section: string, rules: Rule[]) => rules.forEach((rule) => out.push({ section, rule }));
   add("kept as-is", model.raw.filter((r) => r.place === "first").map((r) => r.rule));
   add("Charms", charmRules(model.charms, model.colors));
-  for (const [k, s] of Object.entries(model.slots))
-    if (s.enabled) add(m.slots[k].label, slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear));
+  out.push(...gearRules(model, profile));
   add("kept as-is", model.raw.filter((r) => r.place === "last").map((r) => r.rule));
+  // for toggling in game: starter shows every ancestral; end-game has a 2-GA version, off
+  add("Catch-all", [structuredClone(profile === "starter" ? ALL_ANCESTRAL : ANY_2GA_ANCESTRAL)]);
   add("Mythics", [structuredClone(MYTHICS)]); // always; the player can switch it off in game
   return out;
+}
+
+/** Problems with a compiled filter against the owner's limits (MAX_RULES, MAX_UNIQUES). */
+export function checkLimits(f: Filter): string[] {
+  const problems: string[] = [];
+  if (f.rules.length > MAX_RULES) problems.push(`${f.name}: ${f.rules.length} rules, limit ${MAX_RULES}`);
+  for (const r of f.rules)
+    for (const c of r.conditions)
+      if (c.type === 8 && (c.ids?.length ?? 0) > MAX_UNIQUES)
+        problems.push(`${r.name}: ${c.ids!.length} uniques in one rule, limit ${MAX_UNIQUES}`);
+  return problems;
 }
 
 /** Filter for one profile. The endgame filter keeps the model's name; the starter adds " Starter". */

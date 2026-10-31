@@ -1,4 +1,4 @@
-import { orderedRules, type Colors, type Model } from "../compiler.ts";
+import { compileModel, MAX_RULES, orderedRules, type Colors, type Model } from "../compiler.ts";
 import type { Rule } from "../codec.ts";
 import type { Update } from "./App.tsx";
 import { argb, css } from "./colors.ts";
@@ -11,6 +11,11 @@ const COLOR_LABEL: [keyof Colors, string][] = [
 ];
 
 export function Side({ model, sel, notes, update }: { model: Model; sel: string; notes: string[]; update: Update }) {
+  // rule counts per filter, against the limit (No Ma'am included)
+  const counts: { label: string; n: number }[] = [];
+  for (const [p, label] of [["starter", "Starter"], ["endgame", "End-game"]] as const) {
+    try { counts.push({ label, n: compileModel(model, p).rules.length }); } catch { /* unverified class */ }
+  }
   // the real end-game output order (see orderedRules)
   let rows: { section: string; rule: Rule }[] = [];
   try { rows = orderedRules(model, "endgame"); } catch { /* unverified class: nothing to list */ }
@@ -29,6 +34,9 @@ export function Side({ model, sel, notes, update }: { model: Model; sel: string;
         ))}
       </details>
       <h2>Order <small>(end-game)</small></h2>
+      <p className={counts.some((c) => c.n > MAX_RULES) ? "err" : "muted"}>
+        Rules: {counts.map((c) => `${c.label} ${c.n}/${MAX_RULES}`).join(" · ")}
+      </p>
       <ol>
         {rows.map(({ section, rule }, i) => (
           <li key={i}>

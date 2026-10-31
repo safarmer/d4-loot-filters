@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { produce } from "immer";
 import { decode, encode } from "../codec.ts";
-import { compileModel, defaultModel, PROFILES, type Model, type ProfileName } from "../compiler.ts";
+import { checkLimits, compileModel, defaultModel, MAX_RULES, PROFILES, type Model, type ProfileName } from "../compiler.ts";
 import { roundtrip } from "../importer.ts";
 import { mapping } from "../mapping.ts";
 import { SlotPanel } from "./SlotPanel.tsx";
@@ -41,8 +41,12 @@ export function App() {
   async function compile(profile: ProfileName) {
     try {
       const doc = compileModel(model, profile);
+      // over the rule limit: refuse; other limit problems (an imported rule's unique count): warn
+      if (doc.rules.length > MAX_RULES)
+        throw new Error(`${doc.name}: ${doc.rules.length} rules, over the limit of ${MAX_RULES}. Remove items or kept-as-is rules.`);
+      const warn = checkLimits(doc);
       const text = encode(doc); // throws if the round trip fails
-      const what = `${doc.name}: ${doc.rules.length} rules, round-trip OK`;
+      const what = `${doc.name}: ${doc.rules.length}/${MAX_RULES} rules, round-trip OK${warn.length ? `. Warning: ${warn.join("; ")}` : ""}`;
       try {
         await navigator.clipboard.writeText(text);
         setStatus({ msg: `${what}, copied to clipboard` });

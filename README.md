@@ -13,6 +13,20 @@ one "desired stats needed" count (n) and one "greater affixes to recolour" count
 
 Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game.
 
+Limits (owner's): at most 25 rules per filter and 10 uniques per uniques condition. A slot takes at
+most 10 unique picks; export refuses a filter over 25 rules and warns about a kept-as-is rule with
+more than 10 uniques (Strict Warlock BS's "Build Unique Charms" has 11 and imports fine in game). No
+stat limit is known; working rules use up to 12 stats. The right column shows both rule counts.
+
+To stay under the limit, gear rules merge across slots where that cannot change what matches: same
+kind, level, ancestral, GA count, required and starred stats and stat count, and the combined stat
+list only adds, for each slot, stats that cannot roll on that slot. Starter "show always" rules
+merge across all slots. Uniques go in rules of at most 10. Names: "Helm Uni", "Amulet/Ring Uni",
+"Gear Uni 1".
+
+Before Mythics: starter has "All Ancestral" (show, on) and end-game "Any 2GA+ Ancestral" (show,
+off), for toggling in game. Imported copies of these are replaced by them.
+
 Rule order is fixed, not chosen. A rule sits above another only where that changes what matches
 (first match wins): inside a section, strong recolour before recolour before show, since those rules
 cover the same items. Sections cover different items (charms, each gear slot; uniques vs legendaries

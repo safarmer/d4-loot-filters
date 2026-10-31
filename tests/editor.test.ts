@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { decode, encode } from "../src/codec.ts";
-import { compileModel, defaultModel, validAffixes, validCharmAffixes } from "../src/compiler.ts";
+import { checkLimits, compileModel, defaultModel, MAX_RULES, MAX_UNIQUES, validAffixes, validCharmAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
 import { mapping, STAT_GROUPS } from "../src/mapping.ts";
 import { loadMapping } from "../tools/node_mapping.ts";
@@ -36,15 +36,16 @@ test("import then compile encodes, No Ma'am last", () => {
 
 test("warlock: only the rules split per slot differ", () => {
   const { diffs } = roundtrip(load("strict_warlock_bs"));
-  assert.deepEqual(new Set(diffs.filter((d) => d.startsWith("lost"))),
-    new Set(["lost or changed: Weapon Good GA Uni", "lost or changed: Jewelry Good GA Uni"]));
+  // only the multi-slot unique rules are regrouped (split per slot, then merged where safe)
+  const regrouped = ["Weapon Good GA Uni", "Gloves Good GA Uni", "Jewelry Good GA Uni"].map((n) => `lost or changed: ${n}`);
+  assert.ok(diffs.filter((d) => d.startsWith("lost")).every((d) => regrouped.includes(d)), diffs.join("; "));
 });
 
 test("rogue: round trip loses no rule (RoA Uniques splits per slot)", () => {
   const { diffs } = roundtrip(load("roa_very_strict_rogue"));
   assert.deepEqual(diffs.filter((d) => d.startsWith("lost")), ["lost or changed: Rogue RoA Uniques"]);
   // added: per-slot show rules, the set-only charm rule its set+stats charm rule lacked, and Mythics
-  assert.ok(diffs.filter((d) => d.startsWith("added")).every((d) => d.endsWith(" Uni OK") || d === "added: Charm Set" || d === "added: Mythics"));
+  assert.ok(diffs.filter((d) => d.startsWith("added")).every((d) => d.endsWith(" Uni OK") || ["added: Charm Set", "added: Mythics", "added: Any 2GA+ Ancestral"].includes(d)));
 });
 
 test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-as-is last", () => {
@@ -54,7 +55,7 @@ test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-
   const raw = (name: string) => ({ name, vis: 0, color: "0xFFFFFFFF", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: 32 }] });
   m.raw = [{ place: "last", rule: raw("After") }, { place: "first", rule: raw("Before") }];
   assert.deepEqual(compileModel(m).rules.map((r) => r.name),
-    ["Before", "Charms/Seals for Mats", "Boots Leg", "Boots Leg OK", "Helm Leg", "Helm Leg OK", "After", "Mythics", "No Ma'am"]);
+    ["Before", "Charms/Seals for Mats", "Boots/Helm Leg", "Boots/Helm Leg OK", "After", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
   // the Warlock filter keeps its own order apart from the per-slot split
   const { diffs } = roundtrip(load("strict_warlock_bs"));
   assert.ok(!diffs.includes("same rules, different order") || diffs.some((d) => d.startsWith("added")));
@@ -125,8 +126,8 @@ test("starter and end-game filters from one model", () => {
   const starter = compileModel(m, "starter"), endgame = compileModel(m, "endgame");
   assert.equal(starter.name, "Warlock Starter");
   assert.equal(endgame.name, "Warlock");
-  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["Mythics", 0], ["No Ma'am", 3]]);
-  assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["Mythics", 0], ["No Ma'am", 3]]);
+  assert.deepEqual(starter.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["All Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
+  assert.deepEqual(endgame.rules.map((r) => [r.name, r.vis]), [["Helm Uni", 2], ["Helm Uni OK", 0], ["Any 2GA+ Ancestral", 0], ["Mythics", 0], ["No Ma'am", 3]]);
   const types = (r: { conditions: { type: number | null }[] }) => r.conditions.map((c) => c.type).sort();
   const cond = (r: (typeof starter.rules)[0], t: number) => r.conditions.find((c) => c.type === t);
   // starter: recolour on 2 desired stats only (no GA, no ancestral, no GA-on-stat); show always
@@ -142,10 +143,10 @@ test("starter and end-game filters from one model", () => {
   for (const f of [starter, endgame]) encode(f);
   // no GA wanted: the end-game filter only shows
   m.slots.helm.ga = 0;
-  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Uni OK", "Mythics", "No Ma'am"]);
+  assert.deepEqual(compileModel(m).rules.map((r) => r.name), ["Helm Uni OK", "Any 2GA+ Ancestral", "Mythics", "No Ma'am"]);
   // no desired stats: the starter only shows
   m.slots.helm.desired = []; m.slots.helm.ga_wanted = [];
-  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK", "Mythics", "No Ma'am"]);
+  assert.deepEqual(compileModel(m, "starter").rules.map((r) => r.name), ["Helm Uni OK", "All Ancestral", "Mythics", "No Ma'am"]);
 });
 
 test("charms: set+stats before set, own colours; gear shares one colour", () => {
@@ -182,6 +183,35 @@ test("mythics: shown last, after the unique recolours that also match them", () 
   const { model } = roundtrip(load("strict_warlock_bs"));
   assert.ok(!model.raw.some((r) => r.rule.name === "Mythics"));
   assert.deepEqual(compileModel(model).rules.slice(-2).map((r) => r.name), ["Mythics", "No Ma'am"]);
+});
+
+test("merging: only where it cannot change matches; uniques in rules of at most 10", () => {
+  const m = defaultModel("warlock");
+  // same stats on helm and pants (both can roll Life and Armor): merged
+  Object.assign(m.slots.helm, { enabled: true, uniques: [2647147], desired: [1829592, 1829554], n: 1, ga: 1 });
+  Object.assign(m.slots.pants, { enabled: true, uniques: [1306326], desired: [1829592, 1829554], n: 1, ga: 1 });
+  // boots wants only Life: adding Armor (rollable on boots) would change its matches, so not merged
+  Object.assign(m.slots.boots, { enabled: true, uniques: [2549170], desired: [1829592], n: 1, ga: 1 });
+  const names = compileModel(m).rules.map((r) => r.name);
+  assert.ok(names.includes("Helm/Pants Uni") && names.includes("Boots Uni"), names.join(" | "));
+  // starter show-always rules merge across slots, at most 10 uniques each
+  const many = Object.entries(mapping().uniques).filter(([, u]) => u.slot === "ring" && !u.hidden && u.classes.includes("warlock")).map(([i]) => +i);
+  Object.assign(m.slots.ring, { enabled: true, uniques: many.slice(0, 12) });
+  const starter = compileModel(m, "starter");
+  const show = starter.rules.filter((r) => r.name.endsWith(" OK"));
+  assert.ok(show.every((r) => r.conditions.find((c) => c.type === 8)!.ids!.length <= MAX_UNIQUES));
+  assert.equal(show.flatMap((r) => r.conditions.find((c) => c.type === 8)!.ids!).length, 15);
+  assert.deepEqual(checkLimits(starter), []);
+  for (const f of [starter, compileModel(m)]) encode(f);
+});
+
+test("limits: more than 25 rules or 10 uniques in a rule are reported", () => {
+  const f = { name: "X", class_id: 6, slot_idx: 1, rules: Array.from({ length: 26 }, (_, i) => (
+    { name: `R${i}`, vis: 0, color: "0xFFFFFFFF", enabled: 1, conditions: [{ type: 8, kind: "uniques", ids: i ? [1] : Array(11).fill(1) }] })) };
+  assert.deepEqual(checkLimits(f), ["X: 26 rules, limit 25", "R0: 11 uniques in one rule, limit 10"]);
+  for (const name of ["strict_warlock_bs", "roa_very_strict_rogue"])
+    for (const p of ["starter", "endgame"] as const)
+      assert.ok(compileModel(roundtrip(load(name)).model, p).rules.length <= MAX_RULES, `${name} ${p}`);
 });
 
 test("unverified class id refuses to compile", () => {

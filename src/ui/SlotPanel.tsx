@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { validAffixes, type Model, type SlotConfig } from "../compiler.ts";
+import { MAX_UNIQUES, validAffixes, type Model, type SlotConfig } from "../compiler.ts";
 import { mapping } from "../mapping.ts";
 import type { Update } from "./App.tsx";
 import { StatList } from "./StatList.tsx";
@@ -92,12 +92,14 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
 
       <div className="pair">
       <fieldset>
-        <legend>Uniques to keep</legend>
+        <legend>Uniques to keep <small>({s.uniques.length}/{MAX_UNIQUES})</small></legend>
         <input placeholder="filter…" size={20} value={uq} onChange={(e) => setUq(e.target.value)} />
         <div className="list">
           {uniques.filter((u) => has(u.name, uq)).map((u) => (
             <label key={u.id}>
-              <input type="checkbox" checked={s.uniques.includes(u.id)} onChange={(e) => edit((d) => {
+              <input type="checkbox" checked={s.uniques.includes(u.id)}
+                disabled={!s.uniques.includes(u.id) && s.uniques.length >= MAX_UNIQUES}
+                onChange={(e) => edit((d) => {
                 d.uniques = e.target.checked ? [...d.uniques, u.id] : d.uniques.filter((x) => x !== u.id);
               })} />
               {u.name}

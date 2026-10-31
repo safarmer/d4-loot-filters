@@ -111,6 +111,10 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       if (modelled) moved.push(rule.name);
     };
 
+    // the catch-all ancestral rules: the compiler always adds its own (on in starter, off in end-game)
+    const types = rule.conditions.map((c) => `${c.type}:${c.value ?? ""}`).sort().join(",");
+    if (rule.vis === 0 && (types === "2:4" || types === "2:4,4:2")) return;
+
     // a plain "show mythics" rule: the compiler always adds one (last, before No Ma'am)
     if (rule.vis === 0 && rule.conditions.length === 1 && rule.conditions[0].type === 1
       && rule.conditions[0].value === MYTHIC_MASK) return;
