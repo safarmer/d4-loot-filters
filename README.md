@@ -73,6 +73,11 @@ tempered, and not named `TEST_…`/`UNIQUE_…`. The flag meanings are inferred 
 keeps all 29 affix IDs the two working filters use and cuts 2,618 affixes to 362 (Warlock boots:
 163 → 37). Where labels still clash, the UI shows the internal name.
 
+Stats are grouped under headers in one list: Core stats, Offence, Defence, Resistances, Resource,
+Mobility, Utility, Skill ranks. The group comes from the affix `eCategory` (0 offence, 1 defence,
+2 utility, 3 resource, 4 mobility; inferred) refined by skill tags: `Affix_SkillRankAny` → Skill ranks,
+`Affix_CoreStat`/`Affix_FlatCoreStat` → Core stats, `Affix_Resistance*` → Resistances.
+
 Past-season stats are hidden too (`hidden: "Season n stat"`): an `S<n>_` rollable stat with
 4 < n < `CURRENT_SEASON` and dwFlags bit `0x04` set. Today that is the 26 `S12_KillStreak_*` stats
 (Season 12's killstreak mechanic), leaving 336 stats. `S11_` stats stay: they lack bit `0x04`, match

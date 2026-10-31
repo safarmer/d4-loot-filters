@@ -7,7 +7,7 @@ import { join } from "path";
 import { decode, encode } from "../src/codec.ts";
 import { compileModel, defaultModel, validAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
-import { mapping } from "../src/mapping.ts";
+import { mapping, STAT_GROUPS } from "../src/mapping.ts";
 import { loadMapping } from "../tools/node_mapping.ts";
 
 loadMapping();
@@ -89,6 +89,18 @@ test("unique pickers hold only current items, including every unique the working
   assert.ok(m.uniques[2647147].hidden === undefined); // Leoric's Crown
   assert.equal(m.uniques[2646291].hidden, "Season 14 copy"); // S14 Harlequin Crest
   assert.ok(m.uniques[609820].mythic); // Harlequin Crest
+});
+
+test("every shown stat has a known group", () => {
+  const m = mapping();
+  for (const slot of Object.keys(m.slots))
+    for (const id of validAffixes(slot, "warlock")) {
+      const g = m.affixes[id].group;
+      assert.ok(STAT_GROUPS.includes(g) && g !== "Other", `${slot}: ${m.affixes[id].name} -> ${g}`);
+    }
+  assert.equal(m.affixes[1829598].group, "Mobility"); // S04_Movement_Speed
+  assert.equal(m.affixes[2534726].group, "Skill ranks"); // X2_SkillRankBonus_Warlock_Core_BlazingScream
+  assert.equal(m.affixes[1829614].group, "Resistances"); // S04_Resistance_Single_Fire
 });
 
 test("unverified class id refuses to compile", () => {

@@ -69,6 +69,19 @@ function hiddenReason(name: string, display: string | null, d: any): string | un
   return undefined;
 }
 
+// Affix eCategory: 0 offence, 1 defence, 2 utility, 3 resource, 4 mobility (inferred from data).
+// Skill tags (arAffixSkillTags) split out finer groups: skill ranks sit in utility, core stats in
+// offence, resistances in defence.
+const CATEGORY = ["Offence", "Defence", "Utility", "Resource", "Mobility"];
+
+function statGroup(d: any): string {
+  const tags: string[] = d.arAffixSkillTags.map((t: any) => t?.name ?? "");
+  if (tags.includes("Affix_SkillRankAny")) return "Skill ranks";
+  if (tags.some((t) => t === "Affix_CoreStat" || t === "Affix_FlatCoreStat")) return "Core stats";
+  if (tags.some((t) => t.startsWith("Affix_Resistance"))) return "Resistances";
+  return CATEGORY[d.eCategory] ?? "Other";
+}
+
 const load = (p: string): any => JSON.parse(readFileSync(p, "utf8"));
 const classes = (flags: number[]) => CLASSES.filter((_, i) => flags[i]);
 
@@ -185,7 +198,7 @@ for (const [name, p] of files(join(meta, "Affix"), ".aff.json")) {
   affixes[d.__snoID__] = {
     name, label: pretty(name), labels: [...d.arAllowedItemLabels].sort((a: number, b: number) => a - b),
     classes: classes(d.fAllowedForPlayerClass), tempered: Boolean(d.bIsTemperedAffix), magic_type: d.eMagicType,
-    rollable: rolls,
+    rollable: rolls, group: statGroup(d),
     ...(hidden ? { hidden } : {}),
   };
 }

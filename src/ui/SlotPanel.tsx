@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { validAffixes, type Model, type SlotConfig } from "../compiler.ts";
-import { mapping } from "../mapping.ts";
+import { mapping, STAT_GROUPS } from "../mapping.ts";
 import type { Update } from "./App.tsx";
 import { css, slotColor } from "./colors.ts";
 
@@ -58,9 +58,14 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
     return ids.map((id) => {
       const a = m.affixes[id];
       const name = !a ? `unverified ${id}` : count.get(a.label)! > 1 ? `${a.label} (${a.name})` : a.label;
-      return { id, name, ok: valid.has(id) };
+      return { id, name, ok: valid.has(id), group: a?.group ?? "Other" };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [valid, s.required, s.desired.affixes]);
+
+  // one list, a header per stat group (STAT_GROUPS order), empty groups left out
+  const shownStats = stats.filter((a) => has(a.name, aq));
+  const statGroups = STAT_GROUPS.map((g) => [g, shownStats.filter((a) => a.group === g)] as const)
+    .filter(([, list]) => list.length);
 
   return (
     <section id="panel">
@@ -127,12 +132,17 @@ export function SlotPanel({ slotKey, model, update }: { slotKey: string; model: 
         </div>
         <input placeholder="filter stats…" size={20} value={aq} onChange={(e) => setAq(e.target.value)} />
         <div className="list" style={{ maxHeight: 320 }}>
-          {stats.filter((a) => has(a.name, aq)).map((a) => (
-            <div key={a.id} className="affix" title={a.ok ? "" : "not valid for this slot"}>
-              <span className="nm">{a.name}{a.ok ? "" : " (invalid)"}</span>
-              <select value={statState(s, a.id)} onChange={(e) => edit((d) => setStat(d, a.id, e.target.value as StatState))}>
-                {STATES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
-              </select>
+          {statGroups.map(([group, list]) => (
+            <div key={group} role="group" aria-label={group}>
+              <div className="group-head">{group} <small>{list.length}</small></div>
+              {list.map((a) => (
+                <div key={a.id} className="affix" title={a.ok ? "" : "not valid for this slot"}>
+                  <span className="nm">{a.name}{a.ok ? "" : " (invalid)"}</span>
+                  <select value={statState(s, a.id)} onChange={(e) => edit((d) => setStat(d, a.id, e.target.value as StatState))}>
+                    {STATES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                  </select>
+                </div>
+              ))}
             </div>
           ))}
         </div>

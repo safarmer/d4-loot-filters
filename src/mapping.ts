@@ -17,6 +17,8 @@ export interface AffixDef {
   tempered: boolean; magic_type: number;
   /** Can roll as a random stat on gear (see tools/build_mapping.ts). */
   rollable: boolean;
+  /** Stat group for pickers, from eCategory and skill tags (see STAT_GROUPS). */
+  group: string;
   /** Why stat pickers hide this rollable affix (e.g. a past season's stat). Absent = shown. */
   hidden?: string;
 }
@@ -33,6 +35,9 @@ export interface Mapping {
   charm_type: number;
   seal_type: number;
 }
+
+/** Stat groups in display order. */
+export const STAT_GROUPS = ["Core stats", "Offence", "Defence", "Resistances", "Resource", "Mobility", "Utility", "Skill ranks", "Other"];
 
 export type MappingMeta = Omit<Mapping, "uniques" | "affixes">;
 export const MAPPING_FILES = { meta: "meta.json", uniques: "uniques.json", affixes: "affixes.json" } as const;
