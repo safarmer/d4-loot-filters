@@ -54,7 +54,7 @@ test("fixed order: kept-as-is first, charms, slots (recolour before show), kept-
   const raw = (name: string) => ({ name, vis: 0, color: "0xFFFFFFFF", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: 32 }] });
   m.raw = [{ place: "last", rule: raw("After") }, { place: "first", rule: raw("Before") }];
   assert.deepEqual(compileModel(m).rules.map((r) => r.name),
-    ["Before", "Charms/Seals for Mats", "Boots Leg", "Boots Leg OK", "Helm Leg", "Helm Leg OK", "After", "No Ma'am"]);
+    ["Before", "Charms/Seals for Mats", "Boots Leg", "Boots Leg OK", "Helm Leg", "Helm Leg OK", "After", "Mythics", "No Ma'am"]);
   // the Warlock filter keeps its own order apart from the per-slot split
   const { diffs } = roundtrip(load("strict_warlock_bs"));
   assert.ok(!diffs.includes("same rules, different order") || diffs.some((d) => d.startsWith("added")));
@@ -121,6 +121,7 @@ test("every shown stat has a known group", () => {
 test("starter and end-game filters from one model", () => {
   const m = defaultModel("warlock", "Warlock");
   m.charms.mats = false;
+  m.mythics = false;
   Object.assign(m.slots.helm, { enabled: true, uniques: [2647147], desired: [1829592, 1829586, 1829574], ga_wanted: [1829586], n: 2, ga: 1 });
   const starter = compileModel(m, "starter"), endgame = compileModel(m, "endgame");
   assert.equal(starter.name, "Warlock Starter");
@@ -170,6 +171,19 @@ test("charms: set+stats before set, own colours; gear shares one colour", () => 
   assert.equal(model.colors.charm_set, "0xFFE89922");
   assert.ok(validCharmAffixes("warlock").includes(2545972)); // Talisman_Charm_SkillRankBonus_Warlock_Category_Hellfire
   assert.ok(!validCharmAffixes("warlock").includes(1829592)); // S04_Life is a gear stat
+});
+
+test("mythics: shown last, after the unique recolours that also match them", () => {
+  const m = defaultModel("warlock");
+  Object.assign(m.slots.helm, { enabled: true, uniques: [609820] }); // Harlequin Crest (mythic)
+  const names = compileModel(m).rules.map((r) => r.name);
+  assert.ok(names.indexOf("Helm Uni") < names.indexOf("Mythics"));
+  assert.deepEqual(names.slice(-2), ["Mythics", "No Ma'am"]);
+  // the Warlock filter's first-rule Mythics becomes the setting, moved last
+  const { model } = roundtrip(load("strict_warlock_bs"));
+  assert.ok(model.mythics);
+  assert.ok(!model.raw.some((r) => r.rule.name === "Mythics"));
+  assert.deepEqual(compileModel(model).rules.slice(-2).map((r) => r.name), ["Mythics", "No Ma'am"]);
 });
 
 test("unverified class id refuses to compile", () => {

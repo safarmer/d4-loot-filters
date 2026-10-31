@@ -1,7 +1,7 @@
 // Slot model -> filter JSON (the structure tools/filter_tool.ts encodes).
 //
 // Model:
-//   {name, class, slot_idx, raw: [{place, rule}],
+//   {name, class, slot_idx, raw: [{place, rule}], mythics,
 //    colors: {gear, charm_set, charm_stats}, charms: CharmConfig, slots: {slot_key: SlotConfig}}
 // CharmConfig: enabled, sets [talisman set ids], desired [charm stat ids], n, mats
 //   Charm rules (same in both filters): "Charm Set+Stats" (set charm of a wanted set with n desired
@@ -24,7 +24,9 @@
 // since they cover the same items. Sections cover different items (charms vs each gear slot;
 // uniques vs legendaries by rarity), so they stay in natural order:
 //   kept-as-is rules imported before any modelled rule, charms, gear slots in slot order,
-//   kept-as-is rules imported after, `No Ma'am`.
+//   kept-as-is rules imported after, Mythics, `No Ma'am`.
+// Mythics (show rarity 32) comes last so the unique recolour rules (rarity 48 = unique + mythic)
+// match mythics first.
 // Both filters end with `No Ma'am` (hide the rest); the player can switch it off in game.
 import type { Condition, Filter, Rule } from "./codec.ts";
 import { mapping } from "./mapping.ts";
@@ -32,6 +34,8 @@ import { mapping } from "./mapping.ts";
 export const UNIQUE_MASK = 48; // unique + mythic
 export const SET_MASK = 64;
 const HIDE_ALL: Rule = { name: "No Ma'am", vis: 3, color: "0x00000000", enabled: 1, conditions: [] };
+export const MYTHIC_MASK = 32;
+const MYTHICS: Rule = { name: "Mythics", vis: 0, color: "0xFFFF0000", enabled: 1, conditions: [{ type: 1, kind: "rarity", value: MYTHIC_MASK }] };
 
 export type ProfileName = "starter" | "endgame";
 export const PROFILES: ProfileName[] = ["starter", "endgame"];
@@ -58,6 +62,8 @@ export interface SlotConfig {
 export interface Model {
   name: string; class: string; slot_idx: number;
   raw: { place: Place; rule: Rule }[];
+  /** Show every mythic, as the last rule before `No Ma'am`. */
+  mythics: boolean;
   colors: Colors;
   charms: CharmConfig;
   slots: Record<string, SlotConfig>;
@@ -74,7 +80,7 @@ export function defaultModel(cls = "warlock", name = "New Filter"): Model {
   const slots: Record<string, SlotConfig> = {};
   for (const k of Object.keys(mapping().slots)) slots[k] = defaultSlot();
   return {
-    name, class: cls, slot_idx: 1, raw: [],
+    name, class: cls, slot_idx: 1, raw: [], mythics: true,
     colors: { ...DEFAULT_COLORS }, charms: { enabled: false, sets: [], desired: [], n: 1, mats: true }, slots,
   };
 }
@@ -184,6 +190,7 @@ export function orderedRules(model: Model, profile: ProfileName = "endgame"): { 
   for (const [k, s] of Object.entries(model.slots))
     if (s.enabled) add(m.slots[k].label, slotRules(k, s, model.class, m.slots[k].label.replace(" (x2)", ""), profile, model.colors.gear));
   add("kept as-is", model.raw.filter((r) => r.place === "last").map((r) => r.rule));
+  if (model.mythics) add("Settings", [structuredClone(MYTHICS)]);
   return out;
 }
 

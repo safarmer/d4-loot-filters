@@ -7,7 +7,7 @@
 // (as imported), so compile(import(x)) keeps their behaviour. `roundtrip` compares the two
 // filters rule by rule.
 import { deepEqual, type Condition, type Filter, type Rule } from "./codec.ts";
-import { compileModel, defaultModel, MATS_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
+import { compileModel, defaultModel, MATS_MASK, MYTHIC_MASK, SET_MASK, UNIQUE_MASK, type Model } from "./compiler.ts";
 import { mapping, type Mapping } from "./mapping.ts";
 
 const SLOT_TYPES = new Set([1, 2, 4, 5, 6, 8]);
@@ -100,6 +100,7 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
   const endsHidden = !!last && last.vis === 3 && !last.conditions.length;
 
   model.charms.mats = false; // set again only if the filter has the materials rule
+  model.mythics = false;     // likewise the "show mythics" rule
   let gearColor = false;                // model.colors.gear taken from an imported rule
   const charmKinds = new Set<string>();  // charm rules already modelled
 
@@ -110,6 +111,13 @@ export function importFilter(doc: Filter): { model: Model; warnings: string[] } 
       model.raw.push({ place: modelled ? "last" : "first", rule });
       if (modelled) moved.push(rule.name);
     };
+
+    // a plain "show mythics" rule becomes the Mythics setting (compiled last, before No Ma'am)
+    if (rule.enabled && rule.vis === 0 && rule.conditions.length === 1 && rule.conditions[0].type === 1
+      && rule.conditions[0].value === MYTHIC_MASK && !model.mythics) {
+      model.mythics = true;
+      return;
+    }
 
     if (isMatsRule(rule, m)) {
       if (model.charms.mats) return keepRaw("materials rule already modelled");
