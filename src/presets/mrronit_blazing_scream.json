@@ -1,0 +1,16 @@
+{
+  "name": "MrRonit Blazing Scream",
+  "class": "warlock",
+  "source": "https://mobalytics.gg/diablo-4/builds/blazing-scream-warlock-endgame-build",
+  "slots": {
+    "helm": { "uniques": ["Leoric's Crown"], "stats": ["Life", "Core Stat Willpower", "Skill Rank Bonus Warlock Category Demonology"] },
+    "gloves": { "uniques": ["Hand of Apotheosis"], "stats": ["Core Stat Willpower Greater", "Life Greater", "Crit Damage Greater", "Damage to Vulnerable Greater"], "ga": ["Crit Damage Greater"] },
+    "pants": { "uniques": ["Temerity"], "stats": ["Core Stat Willpower", "Life", "Armor Greater", "Resource Per Second Wrath"], "ga": ["Life"] },
+    "boots": { "stats": ["Core Stat Willpower", "Movement Speed", "Life", "Resistance Single Fire"], "ga": ["Core Stat Willpower"] },
+    "amulet": { "uniques": ["Moloch's Beating Flame"], "stats": ["Core Stat Willpower Greater", "Crit Damage Greater", "Damage to Vulnerable Greater", "Life Greater"], "ga": ["Crit Damage Greater"] },
+    "ring": { "uniques": ["Stone of Jordan", "The Eightfold Idol"], "stats": ["Core Stat Willpower", "Crit Damage", "Damage to Vulnerable", "Life"], "ga": ["Crit Damage"] },
+    "weapon": { "uniques": ["Elegy"], "stats": ["Core Stat Willpower Greater", "Crit Damage", "Life Greater"], "ga": ["Crit Damage"] },
+    "offhand": { "uniques": ["Infernal Homunculus"], "stats": ["Core Stat Willpower Greater", "Crit Damage", "Crit Chance"], "ga": ["Crit Damage"] }
+  },
+  "charms": { "uniques": ["Hellfire Torch"], "sets": ["Rite of the Nameless", "Flesh of Abaddon"], "stats": ["Talisman Charm Skill Rank Bonus Warlock Category Hellfire", "Talisman Charm Skill Rank Bonus Warlock Category Demonology", "Talisman Charm Affix Life"] }
+}

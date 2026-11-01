@@ -107,8 +107,14 @@ erasable syntax (no enums, namespaces or parameter properties) and import with `
 `src/` (outside `src/ui/`) must stay free of Node-only APIs (`fs`, `path`, `Buffer`): the browser
 and the Node tools share it.
 
-Filters in `../Loot Filters/*.txt` are bundled into the page at build time (Load menu). Any other
-filter loads by paste or file picker.
+Filters in `../Loot Filters/*.txt` are bundled into the page at build time (Load menu, "Your
+filters"); builds made outside this folder (GitHub Pages) have none. Any other filter loads by paste
+or file picker.
+
+Default filters (Load menu, "Default filters") are `src/presets/*.json`, in every build. Each is a
+build guide as an editor model, written with the names the editor shows (unique names, stat, set
+and charm stat labels), not IDs. `src/presets.ts` (`presetToModel`) resolves the names and fails on
+a name that is unknown, ambiguous or cannot roll on that slot; a test checks every preset.
 
 The TypeScript code is a port of the earlier Python. Before the Python was removed, both were checked
 to give the same output: byte-identical import strings, the same mapping, and the same models,

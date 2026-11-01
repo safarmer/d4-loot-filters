@@ -3,6 +3,7 @@ import { produce } from "immer";
 import { decode, encode } from "../codec.ts";
 import { checkLimits, compileModel, defaultModel, MAX_RULES, PROFILE_LABEL, PROFILES, type Model, type ProfileName } from "../compiler.ts";
 import { roundtrip } from "../importer.ts";
+import { presetToModel, type Preset } from "../presets.ts";
 import { mapping } from "../mapping.ts";
 import { SlotPanel } from "./SlotPanel.tsx";
 import { CharmPanel } from "./CharmPanel.tsx";
@@ -13,6 +14,8 @@ import { Notes } from "./Notes.tsx";
 // The owner's filters next to editor/, bundled as raw text at build time.
 const BUNDLED = import.meta.glob<string>("../../../Loot Filters/*.txt", { query: "?raw", import: "default" });
 const bundledName = (p: string) => p.split("/").pop()!;
+// Default filters from build guides (src/presets/*.json), in every build.
+const PRESETS = import.meta.glob<Preset>("../presets/*.json", { eager: true, import: "default" });
 
 export type Update = (fn: (m: Model) => void) => void;
 
@@ -35,6 +38,17 @@ export function App() {
       setModel(r.model);
       setNotes(n.length ? n : ["Imported cleanly."]);
       setStatus({ msg: `imported ${doc.rules.length} rules` });
+      setPaste(null);
+    } catch (e) {
+      setStatus({ msg: (e as Error).message, bad: true });
+    }
+  }
+
+  function loadPreset(p: Preset) {
+    try {
+      setModel(presetToModel(p));
+      setNotes([`Default filter from ${p.source}`]);
+      setStatus({ msg: `loaded ${p.name}` });
       setPaste(null);
     } catch (e) {
       setStatus({ msg: (e as Error).message, bad: true });
@@ -76,9 +90,18 @@ export function App() {
         </label>
         <label>Name <input size={22} value={model.name} onChange={(e) => update((d) => { d.name = e.target.value; })} /></label>
         <label>Load{" "}
-          <select value="" onChange={async (e) => { if (e.target.value) load(await BUNDLED[e.target.value]()); }}>
+          <select value="" onChange={async (e) => {
+            const v = e.target.value;
+            if (PRESETS[v]) loadPreset(PRESETS[v]);
+            else if (BUNDLED[v]) load(await BUNDLED[v]());
+          }}>
             <option value="">(existing filter)</option>
-            {Object.keys(BUNDLED).map((p) => <option key={p} value={p}>{bundledName(p)}</option>)}
+            <optgroup label="Default filters">
+              {Object.entries(PRESETS).map(([p, x]) => <option key={p} value={p}>{x.name}</option>)}
+            </optgroup>
+            {Object.keys(BUNDLED).length > 0 && <optgroup label="Your filters">
+              {Object.keys(BUNDLED).map((p) => <option key={p} value={p}>{bundledName(p)}</option>)}
+            </optgroup>}
           </select>
         </label>
         <button onClick={() => setPaste(paste === null ? "" : null)}>Paste string</button>

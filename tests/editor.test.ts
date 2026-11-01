@@ -2,11 +2,12 @@
 // Slot model: mapping coverage, import -> compile round trip, tier order, valid stats per slot.
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { decode, encode } from "../src/codec.ts";
-import { checkLimits, classUniqueCharms, compileModel, defaultModel, MAX_RULES, MAX_UNIQUES, validAffixes, validCharmAffixes } from "../src/compiler.ts";
+import { checkLimits, classUniqueCharms, compileModel, defaultModel, MAX_RULES, MAX_UNIQUES, PROFILES, validAffixes, validCharmAffixes } from "../src/compiler.ts";
 import { roundtrip } from "../src/importer.ts";
+import { presetToModel } from "../src/presets.ts";
 import { mapping, STAT_GROUPS } from "../src/mapping.ts";
 import { loadMapping } from "../tools/node_mapping.ts";
 
@@ -293,4 +294,19 @@ test("strict end-game: one rule per item kind, desired stats and GA count togeth
 
 test("unverified class id refuses to compile", () => {
   assert.throws(() => compileModel(defaultModel("druid")), /unverified/);
+});
+
+test("default filters resolve every name and fit the limits in all three profiles", () => {
+  const dir = join(import.meta.dirname, "..", "src", "presets");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  assert.ok(files.length >= 4);
+  for (const f of files) {
+    const model = presetToModel(JSON.parse(readFileSync(join(dir, f), "utf8")));
+    for (const p of PROFILES) {
+      const doc = compileModel(model, p);
+      assert.ok(doc.rules.length <= MAX_RULES, `${f} ${p}: ${doc.rules.length} rules`);
+      assert.deepEqual(checkLimits(doc), [], `${f} ${p}`);
+      assert.deepEqual(decode(encode(doc)), doc, `${f} ${p}: round trip`);
+    }
+  }
 });

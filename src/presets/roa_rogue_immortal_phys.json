@@ -1,0 +1,15 @@
+{
+  "name": "RoA Immortal Phys",
+  "class": "rogue",
+  "source": "https://d4builds.gg/builds/rain-of-arrows-rogue-endgame/?var=4",
+  "slots": {
+    "helm": { "uniques": ["Leoric's Crown"], "stats": ["Cooldown Reduction CDR", "Resource Max All Classes"], "ga": ["Cooldown Reduction CDR", "Resource Max All Classes"] },
+    "gloves": { "uniques": ["Gladiator's Triumph"], "stats": ["Damage to Vulnerable Greater", "Crit Damage Greater", "Cooldown Reduction CDR"], "ga": ["Damage to Vulnerable Greater", "Crit Damage Greater", "Cooldown Reduction CDR"] },
+    "pants": { "uniques": ["Tibault's Will"], "stats": ["Resource Per Second Energy", "Armor Greater", "Resistance All"], "ga": ["Resource Per Second Energy"] },
+    "boots": { "uniques": ["Beastfall Boots"], "stats": ["Resistance All", "Evade Charges"] },
+    "amulet": { "uniques": ["Melted Heart of Selig"], "stats": ["Resource Max All Classes", "Damage to Vulnerable Greater", "Crit Damage Greater"], "ga": ["Resource Max All Classes", "Damage to Vulnerable Greater"] },
+    "ring": { "stats": ["Damage to Vulnerable", "Resource Gain", "Crit Damage", "Cooldown Reduction CDR"], "ga": ["Damage to Vulnerable", "Cooldown Reduction CDR", "Resource Gain"] },
+    "weapon": { "stats": ["Crit Damage", "Damage All", "Core Stat Dexterity Greater", "Life Per Hit Greater"], "ga": ["Crit Damage", "Damage All"] }
+  },
+  "charms": { "uniques": ["Scoundrel's Kiss", "Endurant Faith", "Hellfire Torch", "Fists of Fate", "Blood-Mad Idol"], "sets": ["Legacy of the Sightless"], "stats": ["Talisman Charm Max Resource Percent", "Talisman Charm Skill Rank Bonus Rogue Category Marksman"] }
+}

@@ -39,3 +39,8 @@ that file stays short. Read this before changing editor behavior. The layout and
   the mapping in `editor\data\` from d4data stays an offline step. Keep `editor\src\` free of Node-only APIs.
 - Third profile, strict end-game (owner, 2026-11-01): per slot one recolour rule needing the desired
   stats and the GA count together (starred stats must be the GA); no show rule. Name suffix " Strict".
+- Default filters (owner, 2026-11-01): `src/presets/*.json`, name-based models (README). Sources: the
+  three "Immortal Rogue" variants of d4builds' Rain of Arrows guide (var=2 poison, 3 cold, 4 phys) and
+  MrRonit's Blazing Scream endgame (Mobalytics, variant "Endgame"). Runeword items (Enigma, Insight,
+  Spirit) are not drop uniques in the game data, so the presets leave them out. Guide stats that
+  cannot roll on the slot are left out. Starred stats follow the guides' greater affix marks; GA count stays 1.
