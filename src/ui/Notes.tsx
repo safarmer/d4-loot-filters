@@ -1,6 +1,12 @@
 import type { Model } from "../compiler.ts";
 import type { Update } from "./App.tsx";
 
+/** A note's text with its web links clickable (e.g. a default filter's guide). */
+function linked(text: string) {
+  return text.split(/(https?:\/\/\S+)/).map((part, i) =>
+    i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : part);
+}
+
 /** Bottom of the centre pane: kept-as-is rules and import notes. */
 export function Notes({ model, notes, update }: { model: Model; notes: string[]; update: Update }) {
   return (
@@ -16,7 +22,7 @@ export function Notes({ model, notes, update }: { model: Model; notes: string[];
         </ul>
       ) : <p className="muted">None.</p>}
       <h2>Import notes</h2>
-      {notes.length ? <ul>{notes.map((n, i) => <li key={i}>{n}</li>)}</ul> : <p className="muted">None.</p>}
+      {notes.length ? <ul>{notes.map((n, i) => <li key={i}>{linked(n)}</li>)}</ul> : <p className="muted">None.</p>}
     </section>
   );
 }
